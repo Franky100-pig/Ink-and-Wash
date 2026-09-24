@@ -63,6 +63,7 @@ html, body {
 }
 .ink:hover { transform: scale(1.12); }
 .ink.active { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.35); }
+.ink.white { border-color: rgba(20, 18, 15, 0.4); }  /* 白按钮给深色描边，在浅纸与工具条上都看得清 */
 
 .slider {
   display: flex;
