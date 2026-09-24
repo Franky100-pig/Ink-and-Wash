@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>墨息 · 自检 (selftest)</title>
+  <style>
+    body { margin: 0; background: #efeae0; font: 14px/1.6 -apple-system, "PingFang SC", system-ui, sans-serif; color: #2a241e; }
+    #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #panel {
+      position: fixed; inset: 24px; overflow: auto;
+      background: rgba(255,255,255,0.94); border-radius: 14px; padding: 20px 24px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    }
+    h1 { margin: 0 0 4px; font-size: 17px; }
+    .sub { color: #6b6257; margin: 0 0 16px; font-size: 13px; }
+    ul { list-style: none; padding: 0; margin: 0 0 14px; }
+    li { padding: 7px 10px; border-radius: 8px; margin-bottom: 6px; display: flex; gap: 10px; align-items: baseline; }
+    li.pass { background: #eef6ef; }
+    li.fail { background: #fbeae9; }
+    .mark { font-weight: 700; }
+    .pass .mark { color: #2e6e52; }
+    .fail .mark { color: #c8372d; }
+    .detail { color: #8a8075; font-size: 12px; margin-left: auto; font-family: ui-monospace, monospace; }
+    #summary { font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+    code { background: #f0ece4; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    .note { margin-top: 14px; padding-top: 12px; border-top: 1px solid #e3ddd2; color: #6b6257; font-size: 12.5px; }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div id="panel">
+    <h1>墨息 · 自检</h1>
+    <p class="sub">自动化检查渲染管线与「打断 / 让位」规则。全绿即说明引擎与交互都活着。</p>
+    <div id="summary">运行中…</div>
+    <ul id="list"></ul>
+    <div class="note">
+      这份自检只覆盖「能不能跑、规则对不对」。<br />
+      <strong>是否真的离线</strong>请用另一招：断开 Wi‑Fi（或 DevTools → Network → 勾 Offline），
+      再打开 <code>index.html</code> 落笔 —— 仍能洇墨、仍能存图，就是离线成立。<br />
+      <strong>墨好不好看</strong>只能你自己看：打开 <code>index.html</code> 画两笔。
+    </div>
+  </div>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/suminagashi.js"></script>
+  <script src="src/app.js"></script>
+  <script>
+  (function () {
+    'use strict'
+    const list = document.getElementById('list')
+    const summary = document.getElementById('summary')
+    const results = []
+
+    function check(name, ok, detail) {
+      results.push({ name, ok: !!ok, detail: detail == null ? '' : String(detail) })
+    }
+
+    // 把 WebGL 画布缩绘到 2D 画布，统计“比宣纸明显更深”的像素比例。
+    // 宣纸亮度约 234，墨会显著压暗 → 阈值取 200。
+    function inkFraction() {
+      const gl = window.__ink.engine.renderer.domElement
+      const c = document.createElement('canvas')
+      c.width = 240; c.height = 160
+      const ctx = c.getContext('2d')
+      ctx.drawImage(gl, 0, 0, c.width, c.height)
+      const d = ctx.getImageData(0, 0, c.width, c.height).data
+      let dark = 0
+      for (let i = 0; i < d.length; i += 4) {
+        const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114
+        if (lum < 200) dark++
+      }
+      return dark / (d.length / 4)
+    }
+
+    function pump(n) { // 推进模拟若干步并渲染
+      const e = window.__ink.engine
+      for (let i = 0; i < n; i++) e.step(0.016)
+      e.render(performance.now())
+    }
+
+    function nextFrame() {
+      return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+    }
+
+    async function main() {
+      await nextFrame()
+
+      // 1) 依赖与实例化
+      check('three.js 已本地加载', !!window.THREE, window.THREE && ('r' + window.THREE.REVISION))
+      check('水墨引擎已本地加载', !!window.Suminagashi)
+      const hook = window.__ink
+      check('引擎实例化成功（WebGL 上下文可用）', !!(hook && hook.engine))
+
+      if (!hook || !hook.engine) { render(); return }
+      const engine = hook.engine
+      const state = hook.state
+      const aiTick = hook.aiTick
+
+      // 像素测试期间先关掉 AI，避免它乱入影响测量
+      state.aiOn = false
+
+      // 2) 空白宣纸
+      engine.clear(); pump(2)
+      const blank = inkFraction()
+      check('初始为空白宣纸（深像素占比 < 2%）', blank < 0.02, blank.toFixed(4))
+
+      // 3) 落墨后画面应变深
+      engine.strokeInk(0.5, 0.5, window.INKS.sumi, 2.0, 1, 0, 0.9)
+      pump(20)
+      const after = inkFraction()
+      check('落墨后画面变深（墨确实渲染出来了）', after > blank + 0.003,
+            blank.toFixed(4) + ' → ' + after.toFixed(4))
+
+      // 4) 导出
+      let url = ''
+      try { url = engine.captureDataURL() } catch (e) { /* ignore */ }
+      check('导出 PNG 可用', url.indexOf('data:image/png') === 0 && url.length > 5000,
+            url ? (url.length / 1024).toFixed(0) + ' KB' : '失败')
+
+      // 5) 让位规则（核心）：偷看 dropInk 有没有被调用
+      let drops = 0
+      const orig = engine.dropInk.bind(engine)
+      engine.dropInk = function () { drops++; return orig.apply(null, arguments) }
+
+      state.aiOn = true
+      const t1 = 1e12
+      state.lastUserActivity = t1          // 用户刚刚落笔
+      aiTick(t1)
+      const whileActive = drops            // 期望 0
+
+      const t2 = 1e12 + 1e6                // 时间推进到下一次 AI 周期
+      state.lastUserActivity = t2 - 10000  // 用户已停笔 10 秒
+      aiTick(t2)
+      const whileIdle = drops - whileActive // 期望 1
+
+      engine.dropInk = orig
+      check('用户落笔时 AI 让位（不落新墨）', whileActive === 0, 'drops=' + whileActive)
+      check('用户停笔后 AI 接手（落一笔）', whileIdle === 1, 'drops=' + whileIdle)
+
+      // 6) AI 关掉后不再落墨
+      state.aiOn = false
+      drops = 0
+      const orig2 = engine.dropInk.bind(engine)
+      engine.dropInk = function () { drops++; return orig2.apply(null, arguments) }
+      const t3 = 1e12 + 2e6
+      state.lastUserActivity = t3 - 60000
+      aiTick(t3)
+      engine.dropInk = orig2
+      check('关掉 AI 同伴后不再落墨', drops === 0, 'drops=' + drops)
+
+      // 7) 归零
+      engine.clear(); pump(2)
+      const cleared = inkFraction()
+      check('归零后回到空白宣纸', cleared < 0.02, cleared.toFixed(4))
+
+      render()
+    }
+
+    function render() {
+      const passed = results.filter((r) => r.ok).length
+      const total = results.length
+      const allOk = passed === total
+      summary.textContent = allOk
+        ? '全部通过 ' + passed + '/' + total
+        : '通过 ' + passed + '/' + total + ' —— 有失败项，截图发我'
+      summary.style.color = allOk ? '#2e6e52' : '#c8372d'
+      list.innerHTML = results.map((r) =>
+        '<li class="' + (r.ok ? 'pass' : 'fail') + '">' +
+        '<span class="mark">' + (r.ok ? 'PASS' : 'FAIL') + '</span>' +
+        '<span>' + r.name + '</span>' +
+        '<span class="detail">' + r.detail + '</span></li>'
+      ).join('')
+    }
+
+    main().catch((e) => {
+      summary.textContent = '自检崩溃：' + e.message
+      summary.style.color = '#c8372d'
+      console.error(e)
+    })
+  })()
+  </script>
+</body>
+</html>
