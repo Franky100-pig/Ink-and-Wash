@@ -43,6 +43,8 @@
   const YIELD_GRACE = 1500   // 用户停笔后，AI 要再等这么久才接手(ms)
   const RECENT_WINDOW = 3000 // 记录用户落点的时间窗(ms)
   let nextDropAt = performance.now() + state.aiPatience * 1000
+  let lastSample = 0          // 上次感知整张纸明暗的时间戳(ms)
+  let canvasDark = 0          // 整张纸平均暗度：0=纸白，1=全黑（供 AI 自我收敛）
 
   // ── 坐标：屏幕像素 → 归一化 UV（y 翻转，因为 WebGL 原点在左下）──
   function toUV(e) {
@@ -112,6 +114,22 @@
       return
     }
 
+    // 周期性感知整张纸的明暗（约每秒一次，开销很小）
+    if (now - lastSample > 1000) { lastSample = now; sampleDarkness() }
+    const dark = canvasDark
+
+    // 偏暗收敛：太黑就少画，或直接用白色把过黑处刷开一点，别让画面闷死。
+    // —— 这是应“整体暗了就少画/换白色”而加的自控。
+    if (dark > 0.62) {
+      if (Math.random() < 0.55) { nextDropAt = now + state.aiPatience * 1000; return } // 这轮跳过，少画
+      aiStroke(INKS.white, 1.4, state.aiSize)   // 白色把过黑处提亮
+      nextDropAt = now + state.aiPatience * 1000
+      return
+    }
+    if (dark > 0.42) {
+      if (Math.random() < 0.5) { aiStroke(INKS.white, 1.4, state.aiSize); nextDropAt = now + state.aiPatience * 1000; return }
+    }
+
     // 选一个离用户最近笔迹尽量远的位置
     const now2 = performance.now()
     state.recentUser = state.recentUser.filter((p) => now2 - p.t < RECENT_WINDOW)
@@ -129,6 +147,29 @@
     aiStroke(ink, 1.4, state.aiSize)
 
     nextDropAt = now + state.aiPatience * 1000
+  }
+
+  // 采样整张纸的平均明暗：0=纸白，1=全黑。约每秒调一次，用来让 AI 自我收敛，
+  // 避免“墨永久不褪”后整张被盖成黑的。drawImage 直接读刚渲染的那一帧。
+  function sampleDarkness() {
+    try {
+      const gl = engine.renderer.domElement
+      engine.render(performance.now())   // 确保截到最新一帧
+      const c = document.createElement('canvas')
+      c.width = 64; c.height = 64
+      const ctx = c.getContext('2d')
+      ctx.drawImage(gl, 0, 0, c.width, c.height)
+      const d = ctx.getImageData(0, 0, c.width, c.height).data
+      let sum = 0
+      for (let i = 0; i < d.length; i += 4) {
+        const lum = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) / 255
+        sum += lum
+      }
+      const avg = sum / (d.length / 4)   // 空白宣纸约 0.92
+      canvasDark = 1 - avg
+    } catch (e) {
+      // 采样失败就沿用上次的值，不打断作画
+    }
   }
 
   // AI 每轮画一小段连续笔触（多节缓慢转向的短划），而不是孤零零一滴，
