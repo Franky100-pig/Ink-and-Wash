@@ -109,13 +109,30 @@
     // 选一个离用户最近笔迹尽量远的位置
     const now2 = performance.now()
     state.recentUser = state.recentUser.filter((p) => now2 - p.t < RECENT_WINDOW)
-    let pos = pickYieldSpot()
     // AI 用一抹安静的蓝（INKS.ai）；偶尔换松绿，让画面活着但不喧哗
     const ink = Math.random() < 0.78 ? INKS.ai : INKS.matsuba
     // 1.4：与用户默认笔触同强度，AI 的墨不再天生偏淡（浓度滑块由引擎渲染端统一生效）
-    engine.dropInk(pos.x, pos.y, ink, 1.4)
+    aiStroke(ink, 1.4)
 
     nextDropAt = now + state.aiPatience * 1000
+  }
+
+  // AI 每轮画一小段连续笔触（多节缓慢转向的短划），而不是孤零零一滴，
+  // 这样看起来才像在“画”，而不是偶尔点一下。每节都避开用户的笔迹中心（让位/留白）。
+  function aiStroke(ink, strength) {
+    const start = pickYieldSpot()
+    let x = start.x, y = start.y
+    let ang = Math.random() * Math.PI * 2
+    const segs = 7            // 一节短划 ≈ 一笔里的一小段
+    const stepLen = 0.045     // 每节在 UV 空间里挪动的距离
+    for (let i = 0; i < segs; i++) {
+      ang += (Math.random() - 0.5) * 0.9   // 轻微转向，走出柔和曲线而非直线
+      const dx = Math.cos(ang), dy = Math.sin(ang)
+      const nx = Math.min(1, Math.max(0, x + dx * stepLen))
+      const ny = Math.min(1, Math.max(0, y + dy * stepLen))
+      engine.strokeInk(nx, ny, ink, strength, dx, dy, 1.0)
+      x = nx; y = ny
+    }
   }
 
   function pickYieldSpot() {
