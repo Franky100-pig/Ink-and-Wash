@@ -117,10 +117,10 @@
       check('导出 PNG 可用', url.indexOf('data:image/png') === 0 && url.length > 5000,
             url ? (url.length / 1024).toFixed(0) + ' KB' : '失败')
 
-      // 5) 让位规则（核心）：偷看 dropInk 有没有被调用
+      // 5) 让位规则（核心）：AI 现在每轮画一小段笔触，监听 strokeInk 的调用
       let drops = 0
-      const orig = engine.dropInk.bind(engine)
-      engine.dropInk = function () { drops++; return orig.apply(null, arguments) }
+      const orig = engine.strokeInk.bind(engine)
+      engine.strokeInk = function () { drops++; return orig.apply(null, arguments) }
 
       state.aiOn = true
       const t1 = 1e12
@@ -131,21 +131,21 @@
       const t2 = 1e12 + 1e6                // 时间推进到下一次 AI 周期
       state.lastUserActivity = t2 - 10000  // 用户已停笔 10 秒
       aiTick(t2)
-      const whileIdle = drops - whileActive // 期望 1
+      const whileIdle = drops - whileActive // 期望 >= 1（一小段笔触 = 若干节短划）
 
-      engine.dropInk = orig
+      engine.strokeInk = orig
       check('用户落笔时 AI 让位（不落新墨）', whileActive === 0, 'drops=' + whileActive)
-      check('用户停笔后 AI 接手（落一笔）', whileIdle === 1, 'drops=' + whileIdle)
+      check('用户停笔后 AI 接手（画了一笔）', whileIdle >= 1, 'segs=' + whileIdle)
 
       // 6) AI 关掉后不再落墨
       state.aiOn = false
       drops = 0
-      const orig2 = engine.dropInk.bind(engine)
-      engine.dropInk = function () { drops++; return orig2.apply(null, arguments) }
+      const orig2 = engine.strokeInk.bind(engine)
+      engine.strokeInk = function () { drops++; return orig2.apply(null, arguments) }
       const t3 = 1e12 + 2e6
       state.lastUserActivity = t3 - 60000
       aiTick(t3)
-      engine.dropInk = orig2
+      engine.strokeInk = orig2
       check('关掉 AI 同伴后不再落墨', drops === 0, 'drops=' + drops)
 
       // 7) 归零
