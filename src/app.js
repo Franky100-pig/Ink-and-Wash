@@ -22,6 +22,11 @@
   const engine = new window.Suminagashi(canvas)
   const INKS = window.INKS
 
+  // AI 自己的调色盘（不含白色——白色是用户的橡皮，AI 不碰）。
+  // AI 会自己在这些颜色里慢慢换，让画面颜色流动但不喧哗。
+  const AI_PALETTE = [INKS.sumi, INKS.ai, INKS.shu, INKS.matsuba]
+  let aiColorIdx = 1 // 起始用那一抹安静的蓝
+
   // ── 状态 ──
   const state = {
     drawing: false,
@@ -31,6 +36,7 @@
     concentration: 1.0,      // 浓度倍率（纯墨色深浅，不影响扩散）
     aiOn: true,
     aiPatience: 4.0,         // AI 两次落笔之间的秒数（=“耐心”旋钮）
+    aiSize: 1.0,             // AI 笔触大小（缩放落墨半径；用户可滑）
     lastUserActivity: -1e9,  // 用户最近一次落笔的时间戳(ms)
     recentUser: [],          // 最近 ~3s 的用户落点，用于让 AI“绕开”
   }
@@ -109,17 +115,26 @@
     // 选一个离用户最近笔迹尽量远的位置
     const now2 = performance.now()
     state.recentUser = state.recentUser.filter((p) => now2 - p.t < RECENT_WINDOW)
-    // AI 用一抹安静的蓝（INKS.ai）；偶尔换松绿，让画面活着但不喧哗
-    const ink = Math.random() < 0.78 ? INKS.ai : INKS.matsuba
+
+    // AI 自己换色：多数时候沿用当前色（保持一段连贯），偶尔换到另一种，
+    // 于是随着时间推移画面颜色会自己流动起来——这就是“AI 自己换颜色”。
+    if (Math.random() < 0.35) {
+      let n = aiColorIdx
+      while (n === aiColorIdx) n = Math.floor(Math.random() * AI_PALETTE.length)
+      aiColorIdx = n
+    }
+    const ink = AI_PALETTE[aiColorIdx]
     // 1.4：与用户默认笔触同强度，AI 的墨不再天生偏淡（浓度滑块由引擎渲染端统一生效）
-    aiStroke(ink, 1.4)
+    // state.aiSize：用户可滑的“AI 笔触”大小，缩放落墨半径
+    aiStroke(ink, 1.4, state.aiSize)
 
     nextDropAt = now + state.aiPatience * 1000
   }
 
   // AI 每轮画一小段连续笔触（多节缓慢转向的短划），而不是孤零零一滴，
   // 这样看起来才像在“画”，而不是偶尔点一下。每节都避开用户的笔迹中心（让位/留白）。
-  function aiStroke(ink, strength) {
+  // size：落墨半径倍率（由“AI 笔触”滑块控制，越大笔越粗）。
+  function aiStroke(ink, strength, size) {
     const start = pickYieldSpot()
     let x = start.x, y = start.y
     let ang = Math.random() * Math.PI * 2
@@ -130,7 +145,7 @@
       const dx = Math.cos(ang), dy = Math.sin(ang)
       const nx = Math.min(1, Math.max(0, x + dx * stepLen))
       const ny = Math.min(1, Math.max(0, y + dy * stepLen))
-      engine.strokeInk(nx, ny, ink, strength, dx, dy, 1.0)
+      engine.strokeInk(nx, ny, ink, strength, dx, dy, size)
       x = nx; y = ny
     }
   }
@@ -205,6 +220,10 @@
     state.aiPatience = parseFloat(e.target.value)
     if (patienceVal) patienceVal.textContent = state.aiPatience + 's'
     nextDropAt = performance.now() + state.aiPatience * 1000
+  })
+
+  on($('ai-size'), 'input', (e) => {
+    state.aiSize = parseFloat(e.target.value)
   })
 
   on($('clear'), 'click', () => engine.clear())
