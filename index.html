@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#efeae0" />
+  <title>墨息 · Ink Quiet — 离线沙盒疗愈</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- 画纸：墨在这里洇开。这块画布完全在本地运行，不上网、不存账号。 -->
+  <canvas id="stage"></canvas>
+
+  <!-- 极简控制条：所有操作都是“不打分、不过关、不失败”的安静空间 -->
+  <div id="bar" role="toolbar" aria-label="画具">
+    <div class="group" id="ink-group" aria-label="你的墨色">
+      <button class="ink" data-ink="sumi"   style="--c:#1a1a1f" title="松烟墨" aria-label="松烟墨"></button>
+      <button class="ink" data-ink="shu"    style="--c:#c8372d" title="朱"   aria-label="朱"></button>
+      <button class="ink" data-ink="matsuba" style="--c:#2e6e52" title="松叶" aria-label="松叶"></button>
+      <button class="ink" data-ink="ai"     style="--c:#16407a" title="AI 的蓝" aria-label="AI 的蓝"></button>
+      <button class="ink white" data-ink="white" style="--c:#ffffff" title="白（减淡 / 留白）" aria-label="白（减淡 / 留白）"></button>
+    </div>
+
+    <label class="slider">笔触
+      <input id="brush" type="range" min="0.5" max="3" step="0.1" value="1.4" />
+    </label>
+
+    <label class="slider">浓度
+      <input id="concentration" type="range" min="0.3" max="3" step="0.1" value="1" />
+    </label>
+
+    <button id="ai-toggle" class="toggle on" aria-pressed="true">AI 同伴：开</button>
+
+    <label class="slider">AI 耐心
+      <input id="patience" type="range" min="2" max="9" step="0.5" value="4" />
+      <span id="patience-val">4s</span>
+    </label>
+
+    <label class="slider">AI 笔触
+      <input id="ai-size" type="range" min="0.4" max="2.5" step="0.1" value="0.8" />
+    </label>
+
+    <button id="clear" class="ghost">归零</button>
+    <button id="export" class="ghost">存图</button>
+  </div>
+
+  <p id="hint">落笔，或让 AI 先画。你随时可以打断它。</p>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/suminagashi.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>
