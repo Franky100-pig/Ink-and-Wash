@@ -329,6 +329,42 @@
         check('按 C 隐藏 / 再按呼出工具栏（沉浸模式）', hidBar && showBar,
               'hide=' + hidBar + ' show=' + showBar)
 
+        // o) 精细创作模式：参数变细腻、AI 让位；切回后恢复
+        const rBefore = hook.engine.config.SPLAT_RADIUS
+        hook.setMode('fine')
+        const fineOk = state.mode === 'fine' &&
+              hook.engine.config.SPLAT_RADIUS < rBefore &&
+              state.aiOn === false
+        hook.setMode('ink')
+        const backOk = state.mode === 'ink' &&
+              hook.engine.config.SPLAT_RADIUS === rBefore &&
+              state.aiOn === true
+        check('精细模式：笔触参数变细 + AI 让位，切回恢复', fineOk && backOk,
+              'fine=' + fineOk + ' back=' + backOk)
+
+        // p) 精细模式下画笔必须走水墨引擎（回归测试：pointerAct 曾漏掉 fine）
+        hook.setMode('fine')
+        let fineStrokes = 0
+        const origStroke = hook.engine.strokeInk.bind(hook.engine)
+        hook.engine.strokeInk = function () { fineStrokes++; return origStroke.apply(null, arguments) }
+        document.getElementById('stage')
+          .dispatchEvent(new PointerEvent('pointerdown', { clientX: 300, clientY: 200, bubbles: true }))
+        hook.engine.strokeInk = origStroke
+        hook.setMode('ink')
+        check('精细模式下落笔走水墨引擎（真实笔触）', fineStrokes >= 1, 'strokes=' + fineStrokes)
+
+        // q) 墨转精保留画面（想新创作就用「归零」）
+        engine.clear(); pump(2)
+        engine.strokeInk(0.5, 0.5, window.INKS.sumi, 2.0, 1, 0, 0.9)
+        pump(2)
+        const inkBefore = inkFraction()
+        hook.setMode('fine'); pump(4)
+        const inkAfter = inkFraction()
+        const kept = inkBefore > 0.003 && inkAfter >= inkBefore * 0.8 && inkAfter < inkBefore + 0.05
+        hook.setMode('ink')
+        check('墨转精保留画面（新创作按归零清空）', kept,
+              'before=' + inkBefore.toFixed(4) + ' after=' + inkAfter.toFixed(4))
+
         state.aiOn = false
         hook.setMode('ink')
       }
