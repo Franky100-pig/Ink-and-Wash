@@ -10,9 +10,17 @@
 <body>
   <!-- 画纸：墨在这里洇开。这块画布完全在本地运行，不上网、不存账号。 -->
   <canvas id="stage"></canvas>
+  <!-- 沙盒层：2D 画布，叠在墨画布之上（pointer-events:none，事件仍落到 #stage）。沙模式才显示。 -->
+  <canvas id="sand-stage" aria-hidden="true"></canvas>
 
   <!-- 极简控制条：所有操作都是“不打分、不过关、不失败”的安静空间 -->
   <div id="bar" role="toolbar" aria-label="画具">
+    <!-- 物态切换：一块画布，换笔 + 换物理。对应“同一个场，两种物态”。 -->
+    <div class="group" id="mode-group" role="tablist" aria-label="物态">
+      <button class="mode-btn active" data-mode="ink" role="tab" aria-selected="true">墨</button>
+      <button class="mode-btn" data-mode="sand" role="tab" aria-selected="false">沙</button>
+    </div>
+
     <div class="group" id="ink-group" aria-label="你的墨色">
       <button class="ink" data-ink="sumi"   style="--c:#1a1a1f" title="松烟墨" aria-label="松烟墨"></button>
       <button class="ink" data-ink="shu"    style="--c:#c8372d" title="朱"   aria-label="朱"></button>
@@ -21,11 +29,21 @@
       <button class="ink white" data-ink="white" style="--c:#ffffff" title="白（减淡 / 留白）" aria-label="白（减淡 / 留白）"></button>
     </div>
 
+    <!-- 沙元素：复用 .ink 圆点样式，浅色元素加 swatch 描边。沙模式才显示。 -->
+    <div class="group" id="sand-group" aria-label="你的材料">
+      <button class="ink swatch" data-el="sand"  style="--c:#d9c69a" title="沙" aria-label="沙"></button>
+      <button class="ink swatch" data-el="water" style="--c:#4a7fae" title="水" aria-label="水"></button>
+      <button class="ink swatch" data-el="stone" style="--c:#8a857c" title="石" aria-label="石"></button>
+      <button class="ink swatch" data-el="dust"  style="--c:#b8a988" title="尘" aria-label="尘"></button>
+      <button class="ink swatch" data-el="ink"   style="--c:#1a1a1f" title="墨（遇水晕开）" aria-label="墨"></button>
+      <button class="ink swatch" data-el="fog"   style="--c:#c3c9c9" title="雾" aria-label="雾"></button>
+    </div>
+
     <label class="slider">笔触
       <input id="brush" type="range" min="0.5" max="3" step="0.1" value="1.4" />
     </label>
 
-    <label class="slider">浓度
+    <label class="slider ink-only">浓度
       <input id="concentration" type="range" min="0.3" max="3" step="0.1" value="1" />
     </label>
 
@@ -48,6 +66,7 @@
 
   <script src="lib/three.min.js"></script>
   <script src="lib/suminagashi.js"></script>
+  <script src="lib/sandsim.js"></script>
   <script src="src/app.js"></script>
 </body>
 </html>
