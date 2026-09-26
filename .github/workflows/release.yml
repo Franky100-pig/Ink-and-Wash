@@ -1,0 +1,44 @@
+name: release
+
+# Build desktop installers (macOS dmg + Windows exe) and publish a GitHub
+# Release whenever a v* tag is pushed. No signing, no auto-update.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # bundle the offline web app into desktop/app/
+      - name: Bundle web app
+        shell: bash
+        run: |
+          mkdir -p desktop/app
+          cp index.html selftest.html styles.css desktop/app/
+          cp -r lib src desktop/app/
+
+      - name: Install dependencies
+        working-directory: desktop
+        run: npm install
+
+      - name: Build and publish
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --publish always

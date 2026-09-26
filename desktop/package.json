@@ -1,0 +1,41 @@
+{
+  "name": "sand-and-ink",
+  "productName": "Sand and Ink",
+  "version": "1.0.0",
+  "description": "Offline sandbox for unwinding: ink-wash fluid + 9-material particle physics. No accounts, no network, no data stored.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.franky100.sandandink",
+    "productName": "Sand and Ink",
+    "files": [
+      "main.js",
+      "app/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.graphics-design",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ],
+      "identity": null
+    },
+    "win": {
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Sand-and-Ink-Setup-${version}.exe"
+    },
+    "dmg": {
+      "artifactName": "Sand-and-Ink-${version}-${arch}.dmg"
+    }
+  }
+}

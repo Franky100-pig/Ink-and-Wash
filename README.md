@@ -19,7 +19,14 @@ There is no backend, no account, no tracking, and no network access at all.
 
 ## Run it (fully offline)
 
-Just double-click `index.html`. Every asset (engines, three.js, UI) is local — zero network requests, no backend, no account.
+**Desktop app (recommended):** download the installer for your platform from the
+[Releases](https://github.com/Franky100-pig/Sand-and-Ink/releases) page —
+`Sand-and-Ink-<version>-<arch>.dmg` for macOS (Apple Silicon & Intel) and
+`Sand-and-Ink-Setup-<version>.exe` for Windows. The desktop app is the same
+offline sandbox wrapped in a small Electron shell: no network access, no
+auto-update, no data stored.
+
+**In the browser:** just double-click `index.html`. Every asset (engines, three.js, UI) is local — zero network requests, no backend, no account.
 
 If your browser restricts `file://`, serve the folder locally (still offline):
 
