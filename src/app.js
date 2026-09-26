@@ -190,11 +190,11 @@
 
   function chooseSandEl() {
     const r = Math.random()
-    if (r < 0.55) return 'sand'
-    if (r < 0.75) return 'water'
-    if (r < 0.85) return 'dust'
-    if (r < 0.95) return 'fog'
-    return 'ink'
+    if (r < 0.40) return 'sand'
+    if (r < 0.60) return 'water'
+    if (r < 0.75) return 'cloud'
+    if (r < 0.88) return 'fire'
+    return 'bomb' // 炸弹权重低，AI 不会乱炸
   }
 
   // 采样整张纸的平均明暗：0=纸白，1=全黑。约每秒调一次，用来让 AI 自我收敛，
@@ -352,7 +352,8 @@
   })
 
   on($('clear'), 'click', () => {
-    if (state.mode === 'sand' && sand) sand.clear()
+    // 归零：清空画布，并取消沙模式下 AI 正在进行的连浇，让它成为一次真正的重置
+    if (state.mode === 'sand' && sand) { sand.clear(); aiPour = null }
     else engine.clear()
   })
 
