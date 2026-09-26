@@ -4,6 +4,12 @@ A **fully offline, account-free, privacy-first** sandbox for unwinding. One canv
 
 - **Ink mode (Ink Quiet, Mode B)** — drop ink on rice paper and watch it bleed and flow.
 - **Sand mode (Mode A)** — a falling-sand particle sandbox with 9 materials.
+- **Fine art mode** — a third position on the mode switch, for when you have
+  something of your own to make: the AI steps aside completely, the brush gets
+  much finer (smaller ink dots), and the ink spreads far less, so lines stay
+  where you put them. Switching back restores your previous AI setting.
+  What you painted in ink mode stays on the paper when you switch; press
+  **Clear** first if you want to start a fresh piece.
 
 Both halves are **sandbox games for decompressing** — no scores, no levels, no way to fail. Everything runs **100% offline** in your browser. This project was made in the hope that it might help someone who is feeling down: pour some sand, light a fire, grow a plant, watch the rain come back around.
 
@@ -46,7 +52,7 @@ Open `selftest.html`. It runs two groups of checks and shows PASS/FAIL:
   blank paper at start; the canvas actually darkens after a stroke; PNG export;
   **AI yields while the user is drawing (no new ink)**; **AI takes over after the user stops**;
   no ink after the AI toggle is off; clearing returns to blank paper.
-- **Sand group (18 checks)**: engine loads/instantiates; sand falls, water finds the floor;
+- **Sand group (21 checks)**: engine loads/instantiates; sand falls, water finds the floor;
   fire burns out (no fuel), water douses fire, cloud rains, bomb fuse detonates;
   **snow falls and piles; seeds germinate into plants near water (bounded growth);
   fire ignites plants and burns them down; fire turns water into steam and steam
@@ -105,7 +111,7 @@ textures/models, so that code path is never triggered.
 
 ### Sand mode (toggle to 「沙」)
 
-- **Ink / Sand**: the segmented button on the left. Switching to sand swaps the five ink dots for
+- **Ink / Sand / Fine**: the segmented button on the left. Switching to sand swaps the five ink dots for
   **nine material dots**, and the physics switches from fluid to cellular automaton; the ink canvas
   freezes and is restored intact when you switch back.
 - **Materials** (a physics sandbox with Powder Game–style reactions): sand / fire / water / cloud /
