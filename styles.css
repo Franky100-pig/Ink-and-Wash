@@ -45,21 +45,21 @@ body.mode-sand #sand-stage { display: block; }
 #bar {
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: 14px;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 16px;
+  gap: 10px;
+  padding: 7px 12px;
   max-width: calc(100vw - 24px);
   flex-wrap: wrap;
   justify-content: center;
   background: var(--bar-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-radius: 16px;
+  border-radius: 13px;
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
   user-select: none;
   z-index: 5;   /* 永远在沙盒层之上，保证可点 */
 }
@@ -71,8 +71,8 @@ body.mode-sand #sand-stage { display: block; }
   color: var(--text-dim);
   background: transparent;
   border: none;
-  border-radius: 9px;
-  padding: 5px 14px;
+  border-radius: 8px;
+  padding: 4px 10px;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
@@ -96,8 +96,8 @@ body.mode-sand #ink-group { display: none; }
 .group { display: flex; gap: 8px; }
 
 .ink {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 2px solid transparent;
   background: var(--c);
@@ -116,7 +116,7 @@ body.mode-sand #ink-group { display: none; }
   color: var(--text-dim);
   white-space: nowrap;
 }
-.slider input[type="range"] { width: 84px; accent-color: var(--accent); }
+.slider input[type="range"] { width: 72px; accent-color: var(--accent); }
 #patience-val { min-width: 26px; color: var(--text); }
 
 button.toggle, button.ghost {
@@ -124,8 +124,8 @@ button.toggle, button.ghost {
   color: var(--text);
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 10px;
-  padding: 7px 12px;
+  border-radius: 9px;
+  padding: 5px 10px;
   cursor: pointer;
   transition: background 0.12s ease;
 }

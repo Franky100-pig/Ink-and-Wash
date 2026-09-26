@@ -16,58 +16,59 @@
   <canvas id="sand-stage" aria-hidden="true"></canvas>
 
   <!-- 极简控制条：所有操作都是“不打分、不过关、不失败”的安静空间 -->
-  <div id="bar" role="toolbar" aria-label="画具">
+  <div id="bar" role="toolbar" data-i18n-aria="ariaBar" aria-label="画具">
     <!-- 物态切换：一块画布，换笔 + 换物理。对应“同一个场，两种物态”。 -->
-    <div class="group" id="mode-group" role="tablist" aria-label="物态">
-      <button class="mode-btn active" data-mode="ink" role="tab" aria-selected="true">墨</button>
-      <button class="mode-btn" data-mode="sand" role="tab" aria-selected="false">沙</button>
+    <div class="group" id="mode-group" role="tablist" data-i18n-aria="ariaMode" aria-label="物态">
+      <button class="mode-btn active" data-mode="ink" role="tab" aria-selected="true"><span data-i18n="modeInk">墨</span></button>
+      <button class="mode-btn" data-mode="sand" role="tab" aria-selected="false"><span data-i18n="modeSand">沙</span></button>
     </div>
 
-    <div class="group" id="ink-group" aria-label="你的墨色">
-      <button class="ink" data-ink="sumi"   style="--c:#1a1a1f" title="松烟墨" aria-label="松烟墨"></button>
-      <button class="ink" data-ink="shu"    style="--c:#c8372d" title="朱"   aria-label="朱"></button>
-      <button class="ink" data-ink="matsuba" style="--c:#2e6e52" title="松叶" aria-label="松叶"></button>
-      <button class="ink" data-ink="ai"     style="--c:#16407a" title="AI 的蓝" aria-label="AI 的蓝"></button>
-      <button class="ink white" data-ink="white" style="--c:#ffffff" title="白（减淡 / 留白）" aria-label="白（减淡 / 留白）"></button>
+    <div class="group" id="ink-group" data-i18n-aria="ariaInks" aria-label="你的墨色">
+      <button class="ink" data-ink="sumi"   style="--c:#1a1a1f" data-i18n-title="inkSumi" title="松烟墨" aria-label="松烟墨"></button>
+      <button class="ink" data-ink="shu"    style="--c:#c8372d" data-i18n-title="inkShu" title="朱" aria-label="朱"></button>
+      <button class="ink" data-ink="matsuba" style="--c:#2e6e52" data-i18n-title="inkMatsuba" title="松叶" aria-label="松叶"></button>
+      <button class="ink" data-ink="ai"     style="--c:#16407a" data-i18n-title="inkAi" title="AI 的蓝" aria-label="AI 的蓝"></button>
+      <button class="ink white" data-ink="white" style="--c:#ffffff" data-i18n-title="inkWhite" title="白（减淡 / 留白）" aria-label="白（减淡 / 留白）"></button>
     </div>
 
     <!-- 沙元素：复用 .ink 圆点样式，浅色元素加 swatch 描边。沙模式才显示。 -->
-    <div class="group" id="sand-group" aria-label="你的材料">
-      <button class="ink swatch" data-el="sand"  style="--c:#d9c69a" title="沙（下落 / 沉水）" aria-label="沙"></button>
-      <button class="ink swatch" data-el="fire"  style="--c:#e8642a" title="火（上浮 / 烧尽 / 引爆炸弹 / 点燃植物）" aria-label="火"></button>
-      <button class="ink swatch" data-el="water" style="--c:#4a7fae" title="水（下落 / 浇灭火 → 蒸汽）" aria-label="水"></button>
-      <button class="ink swatch" data-el="cloud" style="--c:#dfe6ec" title="云（上浮 / 下雨 / 凝水）" aria-label="云"></button>
-      <button class="ink swatch" data-el="bomb"  style="--c:#3a2f3a" title="炸弹颗粒（引信 / 碰火即爆）" aria-label="炸弹颗粒"></button>
-      <button class="ink swatch" data-el="seed"  style="--c:#9a8a4a" title="种子（落水边发芽）" aria-label="种子"></button>
-      <button class="ink swatch" data-el="plant" style="--c:#3f8f4f" title="植物（生长 / 遇火燃烧）" aria-label="植物"></button>
-      <button class="ink swatch" data-el="snow"  style="--c:#f6f9fb" title="雪（慢落堆积 / 遇火化水）" aria-label="雪"></button>
-      <button class="ink swatch" data-el="steam" style="--c:#dee5ea" title="蒸汽（上升 / 凝回水滴）" aria-label="蒸汽"></button>
+    <div class="group" id="sand-group" data-i18n-aria="ariaMats" aria-label="你的材料">
+      <button class="ink swatch" data-el="sand"  style="--c:#d9c69a" data-i18n-title="matSand" title="沙（下落 / 沉水）" aria-label="沙"></button>
+      <button class="ink swatch" data-el="fire"  style="--c:#e8642a" data-i18n-title="matFire" title="火（上浮 / 烧尽 / 引爆炸弹 / 点燃植物）" aria-label="火"></button>
+      <button class="ink swatch" data-el="water" style="--c:#4a7fae" data-i18n-title="matWater" title="水（下落 / 浇灭火 → 蒸汽）" aria-label="水"></button>
+      <button class="ink swatch" data-el="cloud" style="--c:#dfe6ec" data-i18n-title="matCloud" title="云（上浮 / 下雨 / 凝水）" aria-label="云"></button>
+      <button class="ink swatch" data-el="bomb"  style="--c:#3a2f3a" data-i18n-title="matBomb" title="炸弹颗粒（引信 / 碰火即爆）" aria-label="炸弹颗粒"></button>
+      <button class="ink swatch" data-el="seed"  style="--c:#9a8a4a" data-i18n-title="matSeed" title="种子（落水边发芽）" aria-label="种子"></button>
+      <button class="ink swatch" data-el="plant" style="--c:#3f8f4f" data-i18n-title="matPlant" title="植物（生长 / 遇火燃烧）" aria-label="植物"></button>
+      <button class="ink swatch" data-el="snow"  style="--c:#f6f9fb" data-i18n-title="matSnow" title="雪（慢落堆积 / 遇火化水）" aria-label="雪"></button>
+      <button class="ink swatch" data-el="steam" style="--c:#dee5ea" data-i18n-title="matSteam" title="蒸汽（上升 / 凝回水滴）" aria-label="蒸汽"></button>
     </div>
 
-    <label class="slider">笔触
+    <label class="slider"><span data-i18n="brush">笔触</span>
       <input id="brush" type="range" min="0.5" max="3" step="0.1" value="1.4" />
     </label>
 
-    <label class="slider ink-only">浓度
+    <label class="slider ink-only"><span data-i18n="density">浓度</span>
       <input id="concentration" type="range" min="0.3" max="3" step="0.1" value="1" />
     </label>
 
     <button id="ai-toggle" class="toggle on" aria-pressed="true">AI 同伴：开</button>
 
-    <label class="slider">AI 耐心
+    <label class="slider"><span data-i18n="patience">AI 耐心</span>
       <input id="patience" type="range" min="2" max="9" step="0.5" value="4" />
       <span id="patience-val">4s</span>
     </label>
 
-    <label class="slider">AI 笔触
+    <label class="slider"><span data-i18n="aiBrush">AI 笔触</span>
       <input id="ai-size" type="range" min="0.4" max="2.5" step="0.1" value="0.8" />
     </label>
 
-    <button id="clear" class="ghost">归零</button>
-    <button id="export" class="ghost">存图</button>
+    <button id="clear" class="ghost" data-i18n="clear">归零</button>
+    <button id="export" class="ghost" data-i18n="save">存图</button>
+    <button id="lang" class="ghost" data-i18n-title="langTitle" title="切换语言 / Language">EN</button>
   </div>
 
-  <p id="hint">落笔，或让 AI 先画。你随时可以打断它。</p>
+  <p id="hint" data-i18n="hintInk">落笔，或让 AI 先画。你随时可以打断它。</p>
 
   <script src="lib/three.min.js"></script>
   <script src="lib/suminagashi.js"></script>
