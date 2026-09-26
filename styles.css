@@ -84,6 +84,8 @@ body.mode-sand #sand-stage { display: block; }
 body.mode-sand #sand-group { display: flex; }
 /* 墨专属控件：沙模式隐藏 */
 body.mode-sand .ink-only { display: none; }
+/* 墨色板：沙模式隐藏（沙模式只显示材料色，不再叠着墨的 5 色） */
+body.mode-sand #ink-group { display: none; }
 
 /* 元素圆点：浅色材料给描边，在深色工具条上才看得清 */
 .ink.swatch {
