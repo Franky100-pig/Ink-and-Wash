@@ -1,7 +1,7 @@
 {
   "name": "sand-and-ink",
   "productName": "Sand and Ink",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Offline sandbox for unwinding: ink-wash fluid + 9-material particle physics. No accounts, no network, no data stored.",
   "main": "main.js",
   "repository": {
