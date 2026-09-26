@@ -213,10 +213,13 @@
 
   function chooseSandEl() {
     const r = Math.random()
-    if (r < 0.40) return 'sand'
-    if (r < 0.60) return 'water'
-    if (r < 0.75) return 'cloud'
-    if (r < 0.88) return 'fire'
+    if (r < 0.28) return 'sand'
+    if (r < 0.45) return 'water'
+    if (r < 0.57) return 'cloud'
+    if (r < 0.66) return 'fire'
+    if (r < 0.78) return 'snow'
+    if (r < 0.87) return 'steam'
+    if (r < 0.96) return 'seed'
     return 'bomb' // 炸弹权重低，AI 不会乱炸
   }
 

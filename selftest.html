@@ -225,6 +225,38 @@
               sand.countOf(S.BOMB) === 0 && sand.countOf(S.FIRE) > 0,
               'bomb=' + sand.countOf(S.BOMB) + ' fire=' + sand.countOf(S.FIRE))
 
+        // f2) 新元素：雪堆积、种子成植物、植物可燃、水火蒸汽、蒸汽凝水
+        sand.clear(); sand.place(0.5, 0.1, 'snow', 3, 1)
+        for (let i = 0; i < 300; i++) sand.step(0.02)
+        check('雪会下落堆积', sand.countOf(S.SNOW) > 5, 'snow=' + sand.countOf(S.SNOW))
+
+        sand.clear(); sand.place(0.5, 0.95, 'water', 6, 1)
+        for (let i = 0; i < 30; i++) sand.step(0.02)
+        sand.place(0.5, 0.8, 'seed', 4, 1)
+        for (let i = 0; i < 400; i++) sand.step(0.02)
+        const plantGrown = sand.countOf(S.PLANT)
+        check('种子遇水发芽成植物（且生长有界）',
+              plantGrown > 3 && plantGrown < sand.gridW * sand.gridH * 0.3,
+              'plant=' + plantGrown)
+
+        sand.clear(); sand.place(0.5, 0.9, 'plant', 6, 1)
+        for (let i = 0; i < 50; i++) sand.step(0.02)
+        const plantBefore = sand.countOf(S.PLANT)
+        sand.place(0.5, 0.9, 'fire', 3, 1)
+        for (let i = 0; i < 300; i++) sand.step(0.02)
+        check('火点燃植物并蔓延烧掉大半', sand.countOf(S.PLANT) < plantBefore * 0.5,
+              'before=' + plantBefore + ' after=' + sand.countOf(S.PLANT))
+
+        sand.clear(); sand.place(0.5, 0.9, 'water', 5, 1)
+        for (let i = 0; i < 30; i++) sand.step(0.02)
+        sand.place(0.5, 0.985, 'fire', 3, 1)
+        for (let i = 0; i < 40; i++) sand.step(0.02)
+        const steamNow = sand.countOf(S.STEAM)
+        for (let i = 0; i < 900; i++) sand.step(0.02)
+        check('水遇火变蒸汽，蒸汽又凝回水（循环闭合）',
+              steamNow > 0 && sand.countOf(S.STEAM) === 0 && sand.countOf(S.WATER) > 0,
+              'steamNow=' + steamNow + ' steamEnd=' + sand.countOf(S.STEAM) + ' water=' + sand.countOf(S.WATER))
+
         // g) 归零（清空且 EMPTY 计数回到满格）—— 直接验证“归零”按钮的清除逻辑
         sand.clear()
         check('沙盒归零清空', sand.fullness() === 0 && sand.countOf(S.EMPTY) === sand.gridW * sand.gridH,
