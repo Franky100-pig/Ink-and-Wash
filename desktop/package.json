@@ -4,6 +4,10 @@
   "version": "1.0.0",
   "description": "Offline sandbox for unwinding: ink-wash fluid + 9-material particle physics. No accounts, no network, no data stored.",
   "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Franky100-pig/Sand-and-Ink.git"
+  },
   "private": true,
   "scripts": {
     "dist": "electron-builder"
