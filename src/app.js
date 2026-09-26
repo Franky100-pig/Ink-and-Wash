@@ -17,6 +17,8 @@
     return String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]))
   }
 
+  try {
+
   if (!window.Suminagashi) {
     document.body.innerHTML = '<p style="padding:24px;font-family:sans-serif">引擎未加载（Suminagashi 缺失）。请确认 lib/ 下的文件就位。</p>'
     window.__ink = { initError: 'Suminagashi not loaded' }
@@ -303,6 +305,10 @@
   const $ = (id) => document.getElementById(id)
   const on = (el, ev, fn) => { if (el) el.addEventListener(ev, fn) }
 
+  // 提示语元素：提前到 UI 绑定前定义，避免 setMode 在初始化期同步调用时访问 const hint 触发 TDZ 报错
+  const hint = $('hint')
+  let hintGone = false
+
   const inkButtons = Array.from(document.querySelectorAll('#ink-group .ink'))
   function setInk(name) {
     state.userInk = name
@@ -425,8 +431,6 @@
   })
 
   // 提示语：用户一开始画就淡出
-  const hint = $('hint')
-  let hintGone = false
   function setHint(text) { if (hint && !hintGone) hint.textContent = text }
   function fadeHint() {
     if (hintGone || !hint) return
@@ -438,4 +442,10 @@
 
   // 测试钩子：只给 selftest.html 用，正常打开页面时无副作用。
   window.__ink = { engine, sand, state, aiTick, advanceAiPour, setMode }
+
+  } catch (fatal) {
+    // 任何初始化期异常都暴露给 selftest，而不是让页面静默崩溃
+    window.__ink = { initError: String(fatal && fatal.stack || fatal.message || fatal) }
+    console.error('app.js 初始化失败：', fatal)
+  }
 })()

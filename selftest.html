@@ -108,7 +108,9 @@
       check('引擎实例化成功（WebGL 上下文可用）', initOk, initError)
 
       const hook = window.__ink
-      if (!hook) check('app.js 已加载', false, 'window.__ink 不存在')
+      if (!hook) { check('app.js 已加载', false, 'window.__ink 不存在'); render(); return }
+      if (hook.initError) { check('app.js 初始化无异常', false, hook.initError); render(); return }
+      check('app.js 已加载', true)
 
       if (!hook || !hook.engine) { render(); return }
       const engine = hook.engine
