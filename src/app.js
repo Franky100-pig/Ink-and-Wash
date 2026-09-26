@@ -35,6 +35,7 @@
       matPlant: '植物（生长 / 遇火燃烧）', matSnow: '雪（慢落堆积 / 遇火化水）',
       matSteam: '蒸汽（上升 / 凝回水滴）',
       ariaBar: '画具', ariaMode: '物态', ariaInks: '你的墨色', ariaMats: '你的材料',
+      immersive: '按 C 呼出工具栏',
       langTitle: '切换语言 / Language',
     },
     en: {
@@ -51,6 +52,8 @@
       matPlant: 'Plant (grows / burns)', matSnow: 'Snow (slow piles / melts by fire)',
       matSteam: 'Steam (rises / condenses back to water)',
       ariaBar: 'Tools', ariaMode: 'Mode', ariaInks: 'Your inks', ariaMats: 'Your materials',
+      immersive: '按 C 呼出工具栏',
+      immersive: 'Press C to show the toolbar',
       langTitle: '切换语言 / Language',
     },
   }
@@ -410,6 +413,41 @@
   on($('lang'), 'click', () => {
     state.lang = state.lang === 'zh' ? 'en' : 'zh'
     applyLang()
+  })
+
+  // ── 沉浸模式：按 C 隐藏 / 呼出工具栏；画面空白时显示一行淡说明 ──
+  function isCanvasEmpty() {
+    try {
+      if (state.mode === 'sand' && sand) return sand.fullness() < 0.005
+      engine.render(performance.now())
+      const gl = engine.renderer.domElement
+      const c = document.createElement('canvas')
+      c.width = 64; c.height = 64
+      const ctx = c.getContext('2d')
+      ctx.drawImage(gl, 0, 0, 64, 64)
+      const d = ctx.getImageData(0, 0, 64, 64).data
+      let dark = 0
+      for (let i = 0; i < d.length; i += 4) {
+        const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114
+        if (lum < 200) dark++
+      }
+      return dark / (d.length / 4) < 0.02   // 空白宣纸 ≈ 0，有墨明显 > 0
+    } catch (e) { return false }
+  }
+  let immersiveTimer = 0
+  function updateImmersiveNote() {
+    const note = $('immersive-note')
+    if (!note) return
+    if (!document.body.classList.contains('bar-hidden')) { note.classList.remove('show'); return }
+    note.classList.toggle('show', isCanvasEmpty())
+    immersiveTimer = setTimeout(updateImmersiveNote, 1500)
+  }
+  on(window, 'keydown', (e) => {
+    if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      document.body.classList.toggle('bar-hidden')
+      clearTimeout(immersiveTimer)
+      updateImmersiveNote()
+    }
   })
 
   on($('brush'), 'input', (e) => {

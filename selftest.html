@@ -321,6 +321,14 @@
         for (let i = 0; i < sa.gridW * sa.gridH; i++) if (sa.type[i] !== sb.type[i]) { same = false; break }
         check('同种子结果一致', same)
 
+        // n) C 键沉浸模式：隐藏 / 呼出工具栏
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' }))
+        const hidBar = document.body.classList.contains('bar-hidden')
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' }))
+        const showBar = !document.body.classList.contains('bar-hidden')
+        check('按 C 隐藏 / 再按呼出工具栏（沉浸模式）', hidBar && showBar,
+              'hide=' + hidBar + ' show=' + showBar)
+
         state.aiOn = false
         hook.setMode('ink')
       }
