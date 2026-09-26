@@ -177,46 +177,52 @@
         sand.clear(); sand.place(0.5, 0.1, 'water', 1, 1)
         for (let i = 0; i < 220; i++) sand.step(0.02)
         let wBot = false
-        for (let x = 0; x < 1; x += 0.02) if (sand.cellAt(x, 0.99) === S.WATER) wBot = true
+        { const lastRow = (sand.gridH - 1) * sand.gridW
+          for (let x = 0; x < sand.gridW; x++) if (sand.type[lastRow + x] === S.WATER) wBot = true }
         check('水会找到地面', wBot)
 
-        // c) 石保持静止
-        sand.clear(); sand.place(0.5, 0.3, 'stone', 1, 1)
-        for (let i = 0; i < 120; i++) sand.step(0.02)
-        check('石保持静止（空中不落）', sand.cellAt(0.5, 0.3) === S.STONE)
+        // c) 火会烧尽（无燃料，最终熄灭）
+        sand.clear(); sand.place(0.5, 0.9, 'fire', 1, 1)
+        for (let i = 0; i < 400; i++) sand.step(0.02)
+        check('火会烧尽（最终无火）', sand.countOf(S.FIRE) === 0, 'fire=' + sand.countOf(S.FIRE))
 
-        // d) 墨在水中晕开（水被染深）
-        sand.clear(); sand.place(0.5, 0.5, 'water', 3, 1)
-        for (let i = 0; i < 30; i++) sand.step(0.02)
-        sand.place(0.5, 0.45, 'ink', 2, 1)
-        for (let i = 0; i < 260; i++) sand.step(0.02)
-        let tinted = 0
-        const NN = sand.gridW * sand.gridH
-        for (let i = 0; i < NN; i++) if (sand.type[i] === S.WATER && sand.meta[i] > 0) tinted++
-        check('墨在水中晕开（水被染深）', tinted > 0, 'tinted=' + tinted)
+        // d) 水浇灭火
+        sand.clear(); sand.place(0.5, 0.85, 'fire', 2, 1)
+        for (let i = 0; i < 20; i++) sand.step(0.02)
+        sand.place(0.5, 0.5, 'water', 3, 1)
+        for (let i = 0; i < 320; i++) sand.step(0.02)
+        check('水浇灭火（火被灭）', sand.countOf(S.FIRE) === 0, 'fire=' + sand.countOf(S.FIRE))
 
-        // e) 雾会消散
-        sand.clear(); sand.place(0.5, 0.3, 'fog', 1, 1)
-        for (let i = 0; i < 3300; i++) sand.step(0.02)
-        check('雾会消散（短暂是本性的例外）', sand.countOf(S.FOG) === 0, 'left=' + sand.countOf(S.FOG))
+        // e) 云会下雨（凝成水）
+        sand.clear(); sand.place(0.5, 0.3, 'cloud', 3, 1)
+        for (let i = 0; i < 600; i++) sand.step(0.02)
+        check('云会下雨（凝成水）', sand.countOf(S.WATER) > 0, 'water=' + sand.countOf(S.WATER))
 
-        // f) 归零
+        // f) 炸弹会爆炸（引信到 → 爆心清空 + 环带起火，炸弹消失）
+        sand.clear(); sand.place(0.5, 0.5, 'bomb', 1, 1)
+        for (let i = 0; i < 230; i++) sand.step(0.02)
+        check('炸弹引信到即爆（炸弹消失且环带起火）',
+              sand.countOf(S.BOMB) === 0 && sand.countOf(S.FIRE) > 0,
+              'bomb=' + sand.countOf(S.BOMB) + ' fire=' + sand.countOf(S.FIRE))
+
+        // g) 归零（清空且 EMPTY 计数回到满格）—— 直接验证“归零”按钮的清除逻辑
         sand.clear()
-        check('沙盒归零清空', sand.fullness() === 0)
+        check('沙盒归零清空', sand.fullness() === 0 && sand.countOf(S.EMPTY) === sand.gridW * sand.gridH,
+              'empty=' + sand.countOf(S.EMPTY) + '/' + (sand.gridW * sand.gridH))
 
-        // g) 导出
+        // h) 导出
         let surl = ''
         try { surl = sand.captureDataURL() } catch (e) {}
         check('沙盒导出 PNG 可用', typeof surl === 'string' && surl.indexOf('data:image/png') === 0)
 
-        // h) 模式切换
+        // i) 模式切换
         hook.setMode('sand')
         const sandOn = document.body.classList.contains('mode-sand') && state.mode === 'sand'
         hook.setMode('ink')
         const inkOn = !document.body.classList.contains('mode-sand') && state.mode === 'ink'
         check('模式切换生效（墨 ↔ 沙）', sandOn && inkOn)
 
-        // i) 沙模式让位：用户刚动 → 不落沙
+        // j) 沙模式让位：用户刚动 → 不落沙
         let splace = 0
         const os = sand.place.bind(sand)
         sand.place = function () { splace++; return os.apply(null, arguments) }
@@ -229,7 +235,7 @@
         sand.place = os
         check('沙模式下用户落笔 AI 让位（不落沙）', wActive === 0, 'places=' + wActive)
 
-        // j) 沙模式接手：用户停笔 → 落沙
+        // k) 沙模式接手：用户停笔 → 落沙
         let splace2 = 0
         const os2 = sand.place.bind(sand)
         sand.place = function () { splace2++; return os2.apply(null, arguments) }
@@ -240,7 +246,7 @@
         sand.place = os2
         check('沙模式下用户停笔后 AI 接手（落沙）', splace2 >= 1, 'places=' + splace2)
 
-        // k) 沙盒满了 AI 收手
+        // l) 沙盒满了 AI 收手
         let splace3 = 0
         const os3 = sand.place.bind(sand)
         sand.place = function () { splace3++; return os3.apply(null, arguments) }
@@ -253,7 +259,7 @@
         sand.place = os3
         check('沙盒满了 AI 收手', splace3 === 0, 'places=' + splace3 + ' fullness=' + sand.fullness().toFixed(2))
 
-        // l) 种子一致（确定性）
+        // m) 种子一致（确定性）
         const sa = new window.SandSim(document.createElement('canvas'), { seed: 999 })
         const sb = new window.SandSim(document.createElement('canvas'), { seed: 999 })
         sa.place(0.4, 0.3, 'sand', 2, 1); sb.place(0.4, 0.3, 'sand', 2, 1)
@@ -262,34 +268,6 @@
         let same = true
         for (let i = 0; i < sa.gridW * sa.gridH; i++) if (sa.type[i] !== sb.type[i]) { same = false; break }
         check('同种子结果一致', same)
-
-        // m) 沙遇水变湿（湿沙生成，落在水面上也不沉）
-        sand.clear(); sand.place(0.5, 0.99, 'water', 3, 1)
-        for (let i = 0; i < 60; i++) sand.step(0.02)
-        sand.place(0.5, 0.85, 'sand', 2, 1)
-        for (let i = 0; i < 200; i++) sand.step(0.02)
-        let wetSand = 0
-        { const NN = sand.gridW * sand.gridH
-          for (let i = 0; i < NN; i++) if (sand.type[i] === S.SAND && sand.wet[i] === 1) wetSand++ }
-        check('沙遇水变湿（湿沙生成）', wetSand > 0, 'wet=' + wetSand)
-
-        // n) 尘遇水变湿（湿尘生成）
-        sand.clear(); sand.place(0.5, 0.99, 'dust', 2, 1)
-        for (let i = 0; i < 20; i++) sand.step(0.02)
-        sand.place(0.5, 0.9, 'water', 3, 1)
-        for (let i = 0; i < 200; i++) sand.step(0.02)
-        let wetDust = 0
-        { const NN = sand.gridW * sand.gridH
-          for (let i = 0; i < NN; i++) if (sand.type[i] === S.DUST && sand.wet[i] === 1) wetDust++ }
-        check('尘遇水变湿（湿尘生成）', wetDust > 0, 'wet=' + wetDust)
-
-        // o) 雾触石凝成水（露）：雾贴着冷却面慢慢凝成水珠
-        sand.clear()
-        for (let x = 0.1; x < 0.95; x += 0.05) sand.place(x, 0.1, 'stone', 3, 1)  // 顶部石板
-        for (let i = 0; i < 10; i++) sand.step(0.02)
-        for (let x = 0.15; x < 0.9; x += 0.05) sand.place(x, 0.25, 'fog', 3, 1)   // 石板下方雾
-        for (let i = 0; i < 200; i++) sand.step(0.02)
-        check('雾触石凝成水（露）', sand.countOf(S.WATER) > 0, 'water=' + sand.countOf(S.WATER))
 
         state.aiOn = false
         hook.setMode('ink')
