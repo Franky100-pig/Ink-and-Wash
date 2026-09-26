@@ -13,17 +13,38 @@
 (function () {
   'use strict'
 
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]))
+  }
+
   if (!window.Suminagashi) {
     document.body.innerHTML = '<p style="padding:24px;font-family:sans-serif">引擎未加载（Suminagashi 缺失）。请确认 lib/ 下的文件就位。</p>'
+    window.__ink = { initError: 'Suminagashi not loaded' }
     return
   }
 
   const canvas = document.getElementById('stage')
-  const engine = new window.Suminagashi(canvas)
+  let engine = null
+  let initError = ''
+  try {
+    engine = new window.Suminagashi(canvas)
+  } catch (e) {
+    initError = String(e && e.message || e)
+    console.error('Suminagashi init failed:', e)
+  }
   const INKS = window.INKS
   // 沙盒引擎（叠加在墨画布之上的 2D 层）。缺失则沙模式不可用，但墨模式照常。
   const sandCanvas = document.getElementById('sand-stage')
-  const sand = (window.SandSim && sandCanvas) ? new window.SandSim(sandCanvas) : null
+  let sand = null
+  if (window.SandSim && sandCanvas) {
+    try { sand = new window.SandSim(sandCanvas) } catch (e) { console.error('SandSim init failed:', e) }
+  }
+
+  if (!engine) {
+    document.body.innerHTML = '<p style="padding:24px;font-family:sans-serif">WebGL 上下文不可用，无法启动水墨引擎。<br>错误：' + escapeHtml(initError) + '</p>'
+    window.__ink = { initError }
+    return
+  }
 
   // AI 自己的调色盘（不含白色——白色是用户的橡皮，AI 不碰）。
   // AI 会自己在这些颜色里慢慢换，让画面颜色流动但不喧哗。

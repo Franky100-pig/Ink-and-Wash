@@ -90,8 +90,25 @@
       // 1) 依赖与实例化
       check('three.js 已本地加载', !!window.THREE, window.THREE && ('r' + window.THREE.REVISION))
       check('水墨引擎已本地加载', !!window.Suminagashi)
+
+      // 主动尝试一次引擎实例化，捕获具体错误信息用于诊断
+      let initError = ''
+      let initOk = false
+      if (window.Suminagashi) {
+        const probe = document.createElement('canvas')
+        probe.width = 128; probe.height = 128
+        try {
+          const e = new window.Suminagashi(probe)
+          e.dispose && e.dispose()
+          initOk = true
+        } catch (e) {
+          initError = String(e && e.message || e)
+        }
+      }
+      check('引擎实例化成功（WebGL 上下文可用）', initOk, initError)
+
       const hook = window.__ink
-      check('引擎实例化成功（WebGL 上下文可用）', !!(hook && hook.engine))
+      if (!hook) check('app.js 已加载', false, 'window.__ink 不存在')
 
       if (!hook || !hook.engine) { render(); return }
       const engine = hook.engine
