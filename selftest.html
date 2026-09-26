@@ -329,6 +329,13 @@
         check('按 C 隐藏 / 再按呼出工具栏（沉浸模式）', hidBar && showBar,
               'hide=' + hidBar + ' show=' + showBar)
 
+        // n2) 「隐藏」按钮与 Esc 也能切换（快捷键不该是唯一入口）
+        document.getElementById('hide').click()
+        const byBtn = document.body.classList.contains('bar-hidden')
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+        const byEsc = !document.body.classList.contains('bar-hidden')
+        check('「隐藏」按钮可隐藏、Esc 可呼出', byBtn && byEsc, 'btn=' + byBtn + ' esc=' + byEsc)
+
         // o) 精细创作模式：参数变细腻、AI 让位；切回后恢复
         const rBefore = hook.engine.config.SPLAT_RADIUS
         hook.setMode('fine')

@@ -19,9 +19,9 @@
   <div id="bar" role="toolbar" data-i18n-aria="ariaBar" aria-label="画具">
     <!-- 物态切换：一块画布，换笔 + 换物理。对应“同一个场，两种物态”。 -->
     <div class="group" id="mode-group" role="tablist" data-i18n-aria="ariaMode" aria-label="物态">
-      <button class="mode-btn active" data-mode="ink" role="tab" aria-selected="true"><span data-i18n="modeInk">墨</span></button>
-      <button class="mode-btn" data-mode="sand" role="tab" aria-selected="false"><span data-i18n="modeSand">沙</span></button>
-      <button class="mode-btn" data-mode="fine" role="tab" aria-selected="false"><span data-i18n="modeFine">精</span></button>
+      <button class="mode-btn active" data-mode="ink" role="tab" data-i18n-title="modeTipInk" aria-selected="true"><span data-i18n="modeInk">墨</span></button>
+      <button class="mode-btn" data-mode="sand" role="tab" data-i18n-title="modeTipSand" aria-selected="false"><span data-i18n="modeSand">沙</span></button>
+      <button class="mode-btn" data-mode="fine" role="tab" data-i18n-title="modeTipFine" aria-selected="false"><span data-i18n="modeFine">精</span></button>
     </div>
 
     <div class="group" id="ink-group" data-i18n-aria="ariaInks" aria-label="你的墨色">
@@ -66,6 +66,7 @@
 
     <button id="clear" class="ghost" data-i18n="clear">归零</button>
     <button id="export" class="ghost" data-i18n="save">存图</button>
+    <button id="hide" class="ghost" data-i18n="hide" data-i18n-title="hideTip" title="隐藏工具栏（快捷键 C）">隐藏</button>
     <button id="lang" class="ghost" data-i18n-title="langTitle" title="切换语言 / Language">EN</button>
   </div>
 

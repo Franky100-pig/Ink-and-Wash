@@ -23,6 +23,10 @@
   const I18N = {
     zh: {
       modeInk: '墨', modeSand: '沙', modeFine: '精',
+      modeTipInk: '墨：AI 同伴陪你画，随时可打断它',
+      modeTipSand: '沙：九种材料的物理沙盒',
+      modeTipFine: '精：无 AI，细笔、少扩散，自己创作',
+      hide: '隐藏', hideTip: '隐藏工具栏（快捷键 C）',
       brush: '笔触', density: '浓度', patience: 'AI 耐心', aiBrush: 'AI 笔触',
       clear: '归零', save: '存图', saved: '已保存 ✓',
       aiOn: 'AI 同伴：开', aiOff: 'AI 同伴：关',
@@ -41,6 +45,10 @@
     },
     en: {
       modeInk: 'Ink', modeSand: 'Sand', modeFine: 'Fine',
+      modeTipInk: 'Ink: an AI companion paints with you — interrupt anytime',
+      modeTipSand: 'Sand: a physics sandbox with 9 materials',
+      modeTipFine: 'Fine: no AI, fine brush, minimal spread — create on your own',
+      hide: 'Hide', hideTip: 'Hide the toolbar (shortcut: C)',
       brush: 'Brush', density: 'Density', patience: 'AI patience', aiBrush: 'AI brush',
       clear: 'Clear', save: 'Save PNG', saved: 'Saved ✓',
       aiOn: 'AI companion: on', aiOff: 'AI companion: off',
@@ -471,20 +479,29 @@
     } catch (e) { return false }
   }
   let immersiveTimer = 0
-  function updateImmersiveNote() {
+  // force=true: show the way back for a few seconds right after hiding, even if
+  // the canvas already has work on it (otherwise the shortcut is undiscoverable)
+  function updateImmersiveNote(force) {
     const note = $('immersive-note')
     if (!note) return
     if (!document.body.classList.contains('bar-hidden')) { note.classList.remove('show'); return }
-    note.classList.toggle('show', isCanvasEmpty())
-    immersiveTimer = setTimeout(updateImmersiveNote, 1500)
+    if (force) note.classList.add('show')
+    else note.classList.toggle('show', isCanvasEmpty())
+    clearTimeout(immersiveTimer)
+    immersiveTimer = setTimeout(() => updateImmersiveNote(false), force ? 3000 : 1500)
+  }
+  function toggleBarHidden() {
+    document.body.classList.toggle('bar-hidden')
+    updateImmersiveNote(true)
   }
   on(window, 'keydown', (e) => {
-    if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      document.body.classList.toggle('bar-hidden')
-      clearTimeout(immersiveTimer)
-      updateImmersiveNote()
+    if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !e.altKey) toggleBarHidden()
+    if (e.key === 'Escape') {   // always a way back
+      document.body.classList.remove('bar-hidden')
+      updateImmersiveNote(false)
     }
   })
+  on($('hide'), 'click', toggleBarHidden)
 
   on($('brush'), 'input', (e) => {
     state.strength = parseFloat(e.target.value)
