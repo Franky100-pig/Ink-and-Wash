@@ -263,6 +263,34 @@
         for (let i = 0; i < sa.gridW * sa.gridH; i++) if (sa.type[i] !== sb.type[i]) { same = false; break }
         check('同种子结果一致', same)
 
+        // m) 沙遇水变湿（湿沙生成，落在水面上也不沉）
+        sand.clear(); sand.place(0.5, 0.99, 'water', 3, 1)
+        for (let i = 0; i < 60; i++) sand.step(0.02)
+        sand.place(0.5, 0.85, 'sand', 2, 1)
+        for (let i = 0; i < 200; i++) sand.step(0.02)
+        let wetSand = 0
+        { const NN = sand.gridW * sand.gridH
+          for (let i = 0; i < NN; i++) if (sand.type[i] === S.SAND && sand.wet[i] === 1) wetSand++ }
+        check('沙遇水变湿（湿沙生成）', wetSand > 0, 'wet=' + wetSand)
+
+        // n) 尘遇水变湿（湿尘生成）
+        sand.clear(); sand.place(0.5, 0.99, 'dust', 2, 1)
+        for (let i = 0; i < 20; i++) sand.step(0.02)
+        sand.place(0.5, 0.9, 'water', 3, 1)
+        for (let i = 0; i < 200; i++) sand.step(0.02)
+        let wetDust = 0
+        { const NN = sand.gridW * sand.gridH
+          for (let i = 0; i < NN; i++) if (sand.type[i] === S.DUST && sand.wet[i] === 1) wetDust++ }
+        check('尘遇水变湿（湿尘生成）', wetDust > 0, 'wet=' + wetDust)
+
+        // o) 雾触石凝成水（露）：雾贴着冷却面慢慢凝成水珠
+        sand.clear()
+        for (let x = 0.1; x < 0.95; x += 0.05) sand.place(x, 0.1, 'stone', 3, 1)  // 顶部石板
+        for (let i = 0; i < 10; i++) sand.step(0.02)
+        for (let x = 0.15; x < 0.9; x += 0.05) sand.place(x, 0.25, 'fog', 3, 1)   // 石板下方雾
+        for (let i = 0; i < 200; i++) sand.step(0.02)
+        check('雾触石凝成水（露）', sand.countOf(S.WATER) > 0, 'water=' + sand.countOf(S.WATER))
+
         state.aiOn = false
         hook.setMode('ink')
       }
