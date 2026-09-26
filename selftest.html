@@ -329,6 +329,19 @@
         check('按 C 隐藏 / 再按呼出工具栏（沉浸模式）', hidBar && showBar,
               'hide=' + hidBar + ' show=' + showBar)
 
+        // o) 精细创作模式：参数变细腻、AI 让位；切回后恢复
+        const rBefore = hook.engine.config.SPLAT_RADIUS
+        hook.setMode('fine')
+        const fineOk = state.mode === 'fine' &&
+              hook.engine.config.SPLAT_RADIUS < rBefore &&
+              state.aiOn === false
+        hook.setMode('ink')
+        const backOk = state.mode === 'ink' &&
+              hook.engine.config.SPLAT_RADIUS === rBefore &&
+              state.aiOn === true
+        check('精细模式：笔触参数变细 + AI 让位，切回恢复', fineOk && backOk,
+              'fine=' + fineOk + ' back=' + backOk)
+
         state.aiOn = false
         hook.setMode('ink')
       }
