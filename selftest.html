@@ -29,6 +29,7 @@
 </head>
 <body>
   <canvas id="stage"></canvas>
+  <canvas id="sand-stage" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px" aria-hidden="true"></canvas>
   <div id="panel">
     <h1>墨息 · 自检</h1>
     <p class="sub">自动化检查渲染管线与「打断 / 让位」规则。全绿即说明引擎与交互都活着。</p>
@@ -44,6 +45,7 @@
 
   <script src="lib/three.min.js"></script>
   <script src="lib/suminagashi.js"></script>
+  <script src="lib/sandsim.js"></script>
   <script src="src/app.js"></script>
   <script>
   (function () {
@@ -89,8 +91,27 @@
       // 1) 依赖与实例化
       check('three.js 已本地加载', !!window.THREE, window.THREE && ('r' + window.THREE.REVISION))
       check('水墨引擎已本地加载', !!window.Suminagashi)
+
+      // 主动尝试一次引擎实例化，捕获具体错误信息用于诊断
+      let initError = ''
+      let initOk = false
+      if (window.Suminagashi) {
+        const probe = document.createElement('canvas')
+        probe.width = 128; probe.height = 128
+        try {
+          const e = new window.Suminagashi(probe)
+          e.dispose && e.dispose()
+          initOk = true
+        } catch (e) {
+          initError = String(e && e.message || e)
+        }
+      }
+      check('引擎实例化成功（WebGL 上下文可用）', initOk, initError)
+
       const hook = window.__ink
-      check('引擎实例化成功（WebGL 上下文可用）', !!(hook && hook.engine))
+      if (!hook) { check('app.js 已加载', false, 'window.__ink 不存在'); render(); return }
+      if (hook.initError) { check('app.js 初始化无异常', false, hook.initError); render(); return }
+      check('app.js 已加载', true)
 
       if (!hook || !hook.engine) { render(); return }
       const engine = hook.engine
@@ -154,6 +175,156 @@
       const cleared = inkFraction()
       check('归零后回到空白宣纸', cleared < 0.02, cleared.toFixed(4))
 
+      // ── 沙盒断言（Mode A）──
+      const SAND = window.SAND
+      check('沙盒引擎已本地加载', !!window.SandSim)
+      const sand = hook.sand
+      check('沙盒实例化成功', !!sand)
+      if (sand) {
+        const S = SAND
+        state.aiOn = false
+        hook.setMode('sand')
+
+        // a) 沙会下落
+        sand.clear(); sand.place(0.5, 0.1, 'sand', 1, 1)
+        const sTop0 = sand.cellAt(0.5, 0.1)
+        for (let i = 0; i < 160; i++) sand.step(0.02)
+        let sBot = false
+        for (const yy of [0.9, 0.93, 0.96, 0.99]) if (sand.cellAt(0.5, yy) === S.SAND) sBot = true
+        check('沙会往下落（顶空、底有沙）', sTop0 === S.SAND && sand.cellAt(0.5, 0.1) === S.EMPTY && sBot)
+
+        // b) 水会找到地面
+        sand.clear(); sand.place(0.5, 0.1, 'water', 1, 1)
+        for (let i = 0; i < 220; i++) sand.step(0.02)
+        let wBot = false
+        { const lastRow = (sand.gridH - 1) * sand.gridW
+          for (let x = 0; x < sand.gridW; x++) if (sand.type[lastRow + x] === S.WATER) wBot = true }
+        check('水会找到地面', wBot)
+
+        // c) 火会烧尽（无燃料，最终熄灭）
+        sand.clear(); sand.place(0.5, 0.9, 'fire', 1, 1)
+        for (let i = 0; i < 400; i++) sand.step(0.02)
+        check('火会烧尽（最终无火）', sand.countOf(S.FIRE) === 0, 'fire=' + sand.countOf(S.FIRE))
+
+        // d) 水浇灭火
+        sand.clear(); sand.place(0.5, 0.85, 'fire', 2, 1)
+        for (let i = 0; i < 20; i++) sand.step(0.02)
+        sand.place(0.5, 0.5, 'water', 3, 1)
+        for (let i = 0; i < 320; i++) sand.step(0.02)
+        check('水浇灭火（火被灭）', sand.countOf(S.FIRE) === 0, 'fire=' + sand.countOf(S.FIRE))
+
+        // e) 云会下雨（凝成水）
+        sand.clear(); sand.place(0.5, 0.3, 'cloud', 3, 1)
+        for (let i = 0; i < 600; i++) sand.step(0.02)
+        check('云会下雨（凝成水）', sand.countOf(S.WATER) > 0, 'water=' + sand.countOf(S.WATER))
+
+        // f) 炸弹会爆炸（引信到 → 爆心清空 + 环带起火，炸弹消失）
+        sand.clear(); sand.place(0.5, 0.5, 'bomb', 1, 1)
+        for (let i = 0; i < 230; i++) sand.step(0.02)
+        check('炸弹引信到即爆（炸弹消失且环带起火）',
+              sand.countOf(S.BOMB) === 0 && sand.countOf(S.FIRE) > 0,
+              'bomb=' + sand.countOf(S.BOMB) + ' fire=' + sand.countOf(S.FIRE))
+
+        // f2) 新元素：雪堆积、种子成植物、植物可燃、水火蒸汽、蒸汽凝水
+        sand.clear(); sand.place(0.5, 0.1, 'snow', 3, 1)
+        for (let i = 0; i < 300; i++) sand.step(0.02)
+        check('雪会下落堆积', sand.countOf(S.SNOW) > 5, 'snow=' + sand.countOf(S.SNOW))
+
+        sand.clear(); sand.place(0.5, 0.95, 'water', 6, 1)
+        for (let i = 0; i < 30; i++) sand.step(0.02)
+        sand.place(0.5, 0.8, 'seed', 4, 1)
+        for (let i = 0; i < 400; i++) sand.step(0.02)
+        const plantGrown = sand.countOf(S.PLANT)
+        check('种子遇水发芽成植物（且生长有界）',
+              plantGrown > 3 && plantGrown < sand.gridW * sand.gridH * 0.3,
+              'plant=' + plantGrown)
+
+        sand.clear(); sand.place(0.5, 0.9, 'plant', 6, 1)
+        for (let i = 0; i < 50; i++) sand.step(0.02)
+        const plantBefore = sand.countOf(S.PLANT)
+        sand.place(0.5, 0.9, 'fire', 3, 1)
+        for (let i = 0; i < 300; i++) sand.step(0.02)
+        check('火点燃植物并蔓延烧掉大半', sand.countOf(S.PLANT) < plantBefore * 0.5,
+              'before=' + plantBefore + ' after=' + sand.countOf(S.PLANT))
+
+        sand.clear(); sand.place(0.5, 0.9, 'water', 5, 1)
+        for (let i = 0; i < 30; i++) sand.step(0.02)
+        sand.place(0.5, 0.985, 'fire', 3, 1)
+        for (let i = 0; i < 40; i++) sand.step(0.02)
+        const steamNow = sand.countOf(S.STEAM)
+        for (let i = 0; i < 900; i++) sand.step(0.02)
+        check('水遇火变蒸汽，蒸汽又凝回水（循环闭合）',
+              steamNow > 0 && sand.countOf(S.STEAM) === 0 && sand.countOf(S.WATER) > 0,
+              'steamNow=' + steamNow + ' steamEnd=' + sand.countOf(S.STEAM) + ' water=' + sand.countOf(S.WATER))
+
+        // g) 归零（清空且 EMPTY 计数回到满格）—— 直接验证“归零”按钮的清除逻辑
+        sand.clear()
+        check('沙盒归零清空', sand.fullness() === 0 && sand.countOf(S.EMPTY) === sand.gridW * sand.gridH,
+              'empty=' + sand.countOf(S.EMPTY) + '/' + (sand.gridW * sand.gridH))
+
+        // h) 导出
+        let surl = ''
+        try { surl = sand.captureDataURL() } catch (e) {}
+        check('沙盒导出 PNG 可用', typeof surl === 'string' && surl.indexOf('data:image/png') === 0)
+
+        // i) 模式切换
+        hook.setMode('sand')
+        const sandOn = document.body.classList.contains('mode-sand') && state.mode === 'sand'
+        hook.setMode('ink')
+        const inkOn = !document.body.classList.contains('mode-sand') && state.mode === 'ink'
+        check('模式切换生效（墨 ↔ 沙）', sandOn && inkOn)
+
+        // j) 沙模式让位：用户刚动 → 不落沙
+        let splace = 0
+        const os = sand.place.bind(sand)
+        sand.place = function () { splace++; return os.apply(null, arguments) }
+        state.aiOn = true
+        const t1 = 2e12
+        state.lastUserActivity = t1
+        hook.aiTick(t1)
+        hook.advanceAiPour(t1)
+        const wActive = splace
+        sand.place = os
+        check('沙模式下用户落笔 AI 让位（不落沙）', wActive === 0, 'places=' + wActive)
+
+        // k) 沙模式接手：用户停笔 → 落沙
+        let splace2 = 0
+        const os2 = sand.place.bind(sand)
+        sand.place = function () { splace2++; return os2.apply(null, arguments) }
+        const t2 = 2e12 + 1e6
+        state.lastUserActivity = t2 - 10000
+        hook.aiTick(t2)
+        for (let i = 0; i < 5; i++) hook.advanceAiPour(t2)
+        sand.place = os2
+        check('沙模式下用户停笔后 AI 接手（落沙）', splace2 >= 1, 'places=' + splace2)
+
+        // l) 沙盒满了 AI 收手
+        let splace3 = 0
+        const os3 = sand.place.bind(sand)
+        sand.place = function () { splace3++; return os3.apply(null, arguments) }
+        let guard = 0
+        while (sand.fullness() < 0.4 && guard < 3000) { sand.place(Math.random(), Math.random(), 'sand', 3, 1); guard++ }
+        const t3 = 2e12 + 2e6
+        state.lastUserActivity = t3 - 60000
+        hook.aiTick(t3)
+        hook.advanceAiPour(t3)
+        sand.place = os3
+        check('沙盒满了 AI 收手', splace3 === 0, 'places=' + splace3 + ' fullness=' + sand.fullness().toFixed(2))
+
+        // m) 种子一致（确定性）
+        const sa = new window.SandSim(document.createElement('canvas'), { seed: 999 })
+        const sb = new window.SandSim(document.createElement('canvas'), { seed: 999 })
+        sa.place(0.4, 0.3, 'sand', 2, 1); sb.place(0.4, 0.3, 'sand', 2, 1)
+        sa.place(0.6, 0.4, 'water', 2, 1); sb.place(0.6, 0.4, 'water', 2, 1)
+        for (let i = 0; i < 200; i++) { sa.step(0.02); sb.step(0.02) }
+        let same = true
+        for (let i = 0; i < sa.gridW * sa.gridH; i++) if (sa.type[i] !== sb.type[i]) { same = false; break }
+        check('同种子结果一致', same)
+
+        state.aiOn = false
+        hook.setMode('ink')
+      }
+
       render()
     }
 
@@ -165,12 +336,14 @@
         ? '全部通过 ' + passed + '/' + total
         : '通过 ' + passed + '/' + total + ' —— 有失败项，截图发我'
       summary.style.color = allOk ? '#2e6e52' : '#c8372d'
-      list.innerHTML = results.map((r) =>
-        '<li class="' + (r.ok ? 'pass' : 'fail') + '">' +
+      list.innerHTML = results.map((r) => {
+        // detail 可能来自异常消息，统一转义防注入
+        const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]))
+        return '<li class="' + (r.ok ? 'pass' : 'fail') + '">' +
         '<span class="mark">' + (r.ok ? 'PASS' : 'FAIL') + '</span>' +
-        '<span>' + r.name + '</span>' +
-        '<span class="detail">' + r.detail + '</span></li>'
-      ).join('')
+        '<span>' + esc(r.name) + '</span>' +
+        '<span class="detail">' + esc(r.detail) + '</span></li>'
+      }).join('')
     }
 
     main().catch((e) => {

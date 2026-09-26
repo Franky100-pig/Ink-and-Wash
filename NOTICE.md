@@ -55,3 +55,29 @@ three.js 以 UMD 形式本地化打包，用于离线运行，不向任何服务
 ## 本项目本身的许可
 
 本项目交互层（`src/app.js`、`index.html`、`styles.css`）以 MIT 发布。
+
+---
+
+## 3. 沙盒引擎 `lib/sandsim.js`（原创）
+
+本文件为 **Franky100-pig** 的原创实现，MIT 许可：
+
+```
+Copyright (c) 2026 Franky100-pig
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+```
+
+设计思路仅参考 MIT 项目 **neon-sand** 与 **SandGears**（思路借鉴，无代码复用）。
+**明确未使用** Sandboxels（R74n Content License，All Rights Reserved，禁止复制代码，
+作者可随时要求撤下）——本沙盒引擎完全独立从头实现。

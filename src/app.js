@@ -13,16 +13,40 @@
 (function () {
   'use strict'
 
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]))
+  }
+
   try {
 
   if (!window.Suminagashi) {
     document.body.innerHTML = '<p style="padding:24px;font-family:sans-serif">引擎未加载（Suminagashi 缺失）。请确认 lib/ 下的文件就位。</p>'
+    window.__ink = { initError: 'Suminagashi not loaded' }
     return
   }
 
   const canvas = document.getElementById('stage')
-  const engine = new window.Suminagashi(canvas)
+  let engine = null
+  let initError = ''
+  try {
+    engine = new window.Suminagashi(canvas)
+  } catch (e) {
+    initError = String(e && e.message || e)
+    console.error('Suminagashi init failed:', e)
+  }
   const INKS = window.INKS
+  // 沙盒引擎（叠加在墨画布之上的 2D 层）。缺失则沙模式不可用，但墨模式照常。
+  const sandCanvas = document.getElementById('sand-stage')
+  let sand = null
+  if (window.SandSim && sandCanvas) {
+    try { sand = new window.SandSim(sandCanvas) } catch (e) { console.error('SandSim init failed:', e) }
+  }
+
+  if (!engine) {
+    document.body.innerHTML = '<p style="padding:24px;font-family:sans-serif">WebGL 上下文不可用，无法启动水墨引擎。<br>错误：' + escapeHtml(initError) + '</p>'
+    window.__ink = { initError }
+    return
+  }
 
   // AI 自己的调色盘（不含白色——白色是用户的橡皮，AI 不碰）。
   // AI 会自己在这些颜色里慢慢换，让画面颜色流动但不喧哗。
@@ -39,12 +63,15 @@
     aiOn: true,
     aiPatience: 4.0,         // AI 两次落笔之间的秒数（=“耐心”旋钮）
     aiSize: 1.0,             // AI 笔触大小（缩放落墨半径；用户可滑）
+    mode: 'ink',             // 当前物态：'ink' 或 'sand'
+    userEl: 'sand',          // 沙模式下用户当前材料
     lastUserActivity: -1e9,  // 用户最近一次落笔的时间戳(ms)
     recentUser: [],          // 最近 ~3s 的用户落点，用于让 AI“绕开”
   }
   const YIELD_GRACE = 1500   // 用户停笔后，AI 要再等这么久才接手(ms)
   const RECENT_WINDOW = 3000 // 记录用户落点的时间窗(ms)
   let nextDropAt = performance.now() + state.aiPatience * 1000
+  let aiPour = null           // 沙模式 AI 的“倒沙/堆丘”连浇状态（由 advanceAiPour 每帧推进）
   let lastSample = 0          // 上次感知整张纸明暗的时间戳(ms)
   let canvasDark = 0          // 整张纸平均暗度：0=纸白，1=全黑（供 AI 自我收敛）
 
@@ -84,44 +111,57 @@
   }
 
   // ── 指针事件（鼠标 + 触摸统一）──
+  // 同一套事件，按当前模式分发：墨模式走流体笔触，沙模式走倒沙放置。
+  function pointerAct(uv, first) {
+    if (state.mode === 'ink') {
+      userStroke(uv)
+    } else if (sand) {
+      const ny = 1 - uv.y           // 沙用顶→底坐标（UV 的 y=1 在顶部，需翻转）
+      if (first || !state.lastUV) sand.place(uv.x, ny, state.userEl, state.strength, 1)
+      else sand.placeLine(state.lastUV.x, 1 - state.lastUV.y, uv.x, ny, state.userEl, state.strength, 1)
+      markActivity(uv)
+    }
+    state.lastUV = uv
+  }
   canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault()
     state.drawing = true
     state.lastUV = null
-    const uv = toUV(e)
-    userStroke(uv)                 // 点一下也落一滴
+    pointerAct(toUV(e), true)
     fadeHint()
   })
   canvas.addEventListener('pointermove', (e) => {
     if (!state.drawing) return
     e.preventDefault()
-    userStroke(toUV(e))
+    pointerAct(toUV(e), false)
   })
   const stop = () => { state.drawing = false; state.lastUV = null }
   canvas.addEventListener('pointerup', stop)
   canvas.addEventListener('pointercancel', stop)
   canvas.addEventListener('pointerleave', stop)
 
-  // ── “哑 AI”同伴 ──
-  // 每隔一段时间，若用户已经安静（停笔超过 YIELD_GRACE），才落一笔。
-  // 落点会避开用户最近的笔迹中心 —— 这就是“让位 / 退开留白”。
+  // ── “哑 AI”同伴（两模式共用一套让位规则）──
+  // 每隔 patience 秒，若用户已安静（停笔超过 YIELD_GRACE），才行动一次。
+  // 落点会避开用户最近的笔迹 → 这就是“让位 / 退开留白”。
   function aiTick(now) {
     if (!state.aiOn) { nextDropAt = now + state.aiPatience * 1000; return }
     if (now < nextDropAt) return
-
     const sinceUser = now - state.lastUserActivity
     if (sinceUser < YIELD_GRACE) {
       // 用户还在画/刚停：这轮不打扰，等下一个周期再看
       nextDropAt = now + state.aiPatience * 1000
       return
     }
+    if (state.mode === 'ink') aiTickInk(now)
+    else aiTickSandStart(now)
+  }
 
-    // 周期性感知整张纸的明暗（约每秒一次，开销很小）
+  // 墨模式 AI：感知明暗自我收敛（暗了少画/提亮），并自己换色画一小段笔触
+  function aiTickInk(now) {
     if (now - lastSample > 1000) { lastSample = now; sampleDarkness() }
     const dark = canvasDark
 
     // 偏暗收敛：太黑就少画，或直接用白色把过黑处刷开一点，别让画面闷死。
-    // —— 这是应“整体暗了就少画/换白色”而加的自控。
     if (dark > 0.62) {
       if (Math.random() < 0.55) { nextDropAt = now + state.aiPatience * 1000; return } // 这轮跳过，少画
       aiStroke(INKS.white, 1.4, state.aiSize)   // 白色把过黑处提亮
@@ -132,10 +172,6 @@
       if (Math.random() < 0.5) { aiStroke(INKS.white, 1.4, state.aiSize); nextDropAt = now + state.aiPatience * 1000; return }
     }
 
-    // 选一个离用户最近笔迹尽量远的位置
-    const now2 = performance.now()
-    state.recentUser = state.recentUser.filter((p) => now2 - p.t < RECENT_WINDOW)
-
     // AI 自己换色：多数时候沿用当前色（保持一段连贯），偶尔换到另一种，
     // 于是随着时间推移画面颜色会自己流动起来——这就是“AI 自己换颜色”。
     if (Math.random() < 0.35) {
@@ -144,11 +180,47 @@
       aiColorIdx = n
     }
     const ink = AI_PALETTE[aiColorIdx]
-    // 1.4：与用户默认笔触同强度，AI 的墨不再天生偏淡（浓度滑块由引擎渲染端统一生效）
-    // state.aiSize：用户可滑的“AI 笔触”大小，缩放落墨半径
+    // 1.4：与用户默认笔触同强度；state.aiSize：用户可滑的“AI 笔触”大小
     aiStroke(ink, 1.4, state.aiSize)
 
     nextDropAt = now + state.aiPatience * 1000
+  }
+
+  // 沙模式 AI：开始一次“倒沙/堆丘”连浇（具体落粒由 advanceAiPour 每帧推进）
+  function aiTickSandStart(now) {
+    if (!sand) { nextDropAt = now + state.aiPatience * 1000; return }
+    if (sand.fullness() > 0.35) { nextDropAt = now + state.aiPatience * 1000; return } // 盒子太满就收手，避免糊成一团
+    const spot = pickYieldSpot()  // 屏幕 UV，已避开用户最近处
+    let sx, sy
+    if (Math.random() < 0.5) {
+      // 底部左右角落堆丘，把中心留给用户
+      sx = Math.random() < 0.5 ? (0.08 + Math.random() * 0.2) : (0.72 + Math.random() * 0.2)
+      sy = 0.1 + Math.random() * 0.2
+    } else { sx = spot.x; sy = spot.y }
+    aiPour = { x: sx, y: 1 - sy, el: chooseSandEl(), until: now + 1800 + Math.random() * 1000 }
+    nextDropAt = now + state.aiPatience * 1000
+  }
+
+  // 沙模式 AI 每帧推进一次连浇；用户刚动则让位（本帧不浇）
+  function advanceAiPour(now) {
+    if (state.mode !== 'sand' || !sand || !state.aiOn) { aiPour = null; return }
+    if (!aiPour) return
+    if (now - state.lastUserActivity < YIELD_GRACE) return  // 用户刚动 → 让位
+    if (now >= aiPour.until) { aiPour = null; return }
+    const n = Math.max(1, Math.round(state.aiSize * 3))
+    for (let k = 0; k < n; k++) sand.place(aiPour.x, aiPour.y, aiPour.el, 1, state.aiSize)
+  }
+
+  function chooseSandEl() {
+    const r = Math.random()
+    if (r < 0.28) return 'sand'
+    if (r < 0.45) return 'water'
+    if (r < 0.57) return 'cloud'
+    if (r < 0.66) return 'fire'
+    if (r < 0.78) return 'snow'
+    if (r < 0.87) return 'steam'
+    if (r < 0.96) return 'seed'
+    return 'bomb' // 炸弹权重低，AI 不会乱炸
   }
 
   // 采样整张纸的平均明暗：0=纸白，1=全黑。约每秒调一次，用来让 AI 自我收敛，
@@ -217,9 +289,15 @@
     let dt = (now - last) / 1000
     last = now
     if (dt > 0.05) dt = 0.05        // 切后台回来不要炸
-    engine.step(dt)
-    engine.render(now)
+    if (state.mode === 'ink' || !sand) {
+      engine.step(dt)
+      engine.render(now)
+    } else {
+      sand.step(dt)
+      sand.render(now)
+    }
     aiTick(now)
+    if (state.mode === 'sand') advanceAiPour(now)
     requestAnimationFrame(frame)
   }
   requestAnimationFrame(frame)
@@ -230,13 +308,47 @@
   const $ = (id) => document.getElementById(id)
   const on = (el, ev, fn) => { if (el) el.addEventListener(ev, fn) }
 
-  const inkButtons = Array.from(document.querySelectorAll('.ink'))
+  // 提示语元素：提前到 UI 绑定前定义，避免 setMode 在初始化期同步调用时访问 const hint 触发 TDZ 报错
+  const hint = $('hint')
+  let hintGone = false
+
+  const inkButtons = Array.from(document.querySelectorAll('#ink-group .ink'))
   function setInk(name) {
     state.userInk = name
     inkButtons.forEach((b) => b.classList.toggle('active', b.dataset.ink === name))
   }
   inkButtons.forEach((b) => on(b, 'click', () => setInk(b.dataset.ink)))
   setInk('sumi')
+
+  // 沙元素选择（复用 .ink 圆点样式）
+  const sandButtons = Array.from(document.querySelectorAll('#sand-group .ink'))
+  function setEl(name) {
+    state.userEl = name
+    sandButtons.forEach((b) => b.classList.toggle('active', b.dataset.el === name))
+  }
+  sandButtons.forEach((b) => on(b, 'click', () => setEl(b.dataset.el)))
+  setEl('sand')
+
+  // 墨 / 沙 模式切换（“同一个场，两种物态”：换笔 + 换物理，不是换程序）
+  const modeBtns = Array.from(document.querySelectorAll('.mode-btn'))
+  function setMode(m) {
+    state.mode = m
+    document.body.classList.toggle('mode-sand', m === 'sand')
+    document.body.classList.toggle('mode-ink', m === 'ink')
+    modeBtns.forEach((b) => {
+      const on2 = b.dataset.mode === m
+      b.classList.toggle('active', on2)
+      b.setAttribute('aria-selected', String(on2))
+    })
+    if (m === 'sand' && sand) sand.render(performance.now())  // 切回时立刻恢复沙画
+    setHint(m === 'sand'
+      ? '倒一把沙，或让 AI 慢慢堆一座小丘。你随时可以打断它。'
+      : '落笔，或让 AI 先画。你随时可以打断它。')
+    state.drawing = false
+    state.lastUV = null
+  }
+  modeBtns.forEach((b) => on(b, 'click', () => setMode(b.dataset.mode)))
+  setMode('ink')
 
   on($('brush'), 'input', (e) => {
     state.strength = parseFloat(e.target.value)
@@ -269,15 +381,21 @@
     state.aiSize = parseFloat(e.target.value)
   })
 
-  on($('clear'), 'click', () => engine.clear())
+  on($('clear'), 'click', () => {
+    // 归零：清空画布，并取消沙模式下 AI 正在进行的连浇，让它成为一次真正的重置
+    if (state.mode === 'sand' && sand) { sand.clear(); aiPour = null }
+    else engine.clear()
+  })
 
   on($('export'), 'click', () => {
     const btn = $('export')
     try {
-      engine.render(performance.now())           // 确保截的是最新一帧
-      const cv = engine.renderer.domElement
+      const useSand = (state.mode === 'sand' && sand)
+      if (useSand) sand.render(performance.now())      // 确保截的是最新一帧
+      else engine.render(performance.now())
+      const cv = useSand ? sand.canvas : engine.renderer.domElement
       const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-      const name = 'ink-quiet-' + ts + '.png'
+      const name = (useSand ? 'ink-quiet-sand-' : 'ink-quiet-') + ts + '.png'
       const fire = (href) => {
         const a = document.createElement('a')
         a.href = href
@@ -289,13 +407,13 @@
       // 优先 toBlob + 对象 URL：对 file:// 与 Safari 更稳（大画布也不会因 data URL 过长失败）
       if (cv.toBlob) {
         cv.toBlob((blob) => {
-          if (!blob) { fire(engine.captureDataURL()); return }
+          if (!blob) { fire(useSand ? sand.captureDataURL() : engine.captureDataURL()); return }
           const url = URL.createObjectURL(blob)
           fire(url)
           setTimeout(() => URL.revokeObjectURL(url), 5000)
         }, 'image/png')
       } else {
-        fire(engine.captureDataURL())
+        fire(useSand ? sand.captureDataURL() : engine.captureDataURL())
       }
       if (btn) {
         const t = btn.textContent
@@ -304,20 +422,19 @@
       }
     } catch (err) {
       // 极端兜底：新标签页打开让用户另存为
-      window.open(engine.captureDataURL(), '_blank')
+      try { window.open((state.mode === 'sand' && sand) ? sand.captureDataURL() : engine.captureDataURL(), '_blank') } catch (e2) {}
     }
   })
 
-  // 窗口尺寸变化：重算模拟分辨率
+  // 窗口尺寸变化：两个引擎都重算模拟分辨率
   let rt = 0
   window.addEventListener('resize', () => {
     clearTimeout(rt)
-    rt = setTimeout(() => engine.resize(), 120)
+    rt = setTimeout(() => { engine.resize(); if (sand) sand.resize() }, 120)
   })
 
   // 提示语：用户一开始画就淡出
-  const hint = $('hint')
-  let hintGone = false
+  function setHint(text) { if (hint && !hintGone) hint.textContent = text }
   function fadeHint() {
     if (hintGone || !hint) return
     hintGone = true
@@ -327,9 +444,10 @@
   setTimeout(fadeHint, 6000) // 没动手也 6 秒后淡出
 
   // 测试钩子：只给 selftest.html 用，正常打开页面时无副作用。
-  window.__ink = { engine, state, aiTick }
+  window.__ink = { engine, sand, state, aiTick, advanceAiPour, setMode }
+
   } catch (fatal) {
-    // 任何初始化异常都暴露给 selftest，而不是让页面静默崩溃
+    // 任何初始化期异常都暴露给 selftest，而不是让页面静默崩溃
     window.__ink = { initError: String(fatal && fatal.stack || fatal.message || fatal) }
     console.error('app.js 初始化失败：', fatal)
   }
