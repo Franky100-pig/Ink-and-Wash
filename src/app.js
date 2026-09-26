@@ -19,6 +19,42 @@
 
   try {
 
+  // ── 中英双语 UI（字不多，直接上字典；不持久化——隐私承诺：什么都不存）──
+  const I18N = {
+    zh: {
+      modeInk: '墨', modeSand: '沙',
+      brush: '笔触', density: '浓度', patience: 'AI 耐心', aiBrush: 'AI 笔触',
+      clear: '归零', save: '存图', saved: '已保存 ✓',
+      aiOn: 'AI 同伴：开', aiOff: 'AI 同伴：关',
+      hintInk: '落笔，或让 AI 先画。你随时可以打断它。',
+      hintSand: '倒一把沙，或让 AI 慢慢堆一座小丘。你随时可以打断它。',
+      inkSumi: '松烟墨', inkShu: '朱', inkMatsuba: '松叶', inkAi: 'AI 的蓝', inkWhite: '白（减淡 / 留白）',
+      matSand: '沙（下落 / 沉水）', matFire: '火（上浮 / 烧尽 / 引爆炸弹 / 点燃植物）',
+      matWater: '水（下落 / 浇灭火 → 蒸汽）', matCloud: '云（上浮 / 下雨 / 凝水）',
+      matBomb: '炸弹颗粒（引信 / 碰火即爆）', matSeed: '种子（落水边发芽）',
+      matPlant: '植物（生长 / 遇火燃烧）', matSnow: '雪（慢落堆积 / 遇火化水）',
+      matSteam: '蒸汽（上升 / 凝回水滴）',
+      ariaBar: '画具', ariaMode: '物态', ariaInks: '你的墨色', ariaMats: '你的材料',
+      langTitle: '切换语言 / Language',
+    },
+    en: {
+      modeInk: 'Ink', modeSand: 'Sand',
+      brush: 'Brush', density: 'Density', patience: 'AI patience', aiBrush: 'AI brush',
+      clear: 'Clear', save: 'Save PNG', saved: 'Saved ✓',
+      aiOn: 'AI companion: on', aiOff: 'AI companion: off',
+      hintInk: 'Paint, or let the AI start. You can interrupt it anytime.',
+      hintSand: 'Pour some sand, or let the AI pile a little dune. You can interrupt it anytime.',
+      inkSumi: 'Pine soot', inkShu: 'Vermilion', inkMatsuba: 'Pine needle', inkAi: 'AI blue', inkWhite: 'White (lighten / blank)',
+      matSand: 'Sand (falls / sinks in water)', matFire: 'Fire (rises / burns out / detonates bombs / ignites plants)',
+      matWater: 'Water (falls / douses fire → steam)', matCloud: 'Cloud (rises / rains / condenses)',
+      matBomb: 'Bomb grains (fuse / explodes on fire)', matSeed: 'Seed (sprouts near water)',
+      matPlant: 'Plant (grows / burns)', matSnow: 'Snow (slow piles / melts by fire)',
+      matSteam: 'Steam (rises / condenses back to water)',
+      ariaBar: 'Tools', ariaMode: 'Mode', ariaInks: 'Your inks', ariaMats: 'Your materials',
+      langTitle: '切换语言 / Language',
+    },
+  }
+
   if (!window.Suminagashi) {
     document.body.innerHTML = '<p style="padding:24px;font-family:sans-serif">引擎未加载（Suminagashi 缺失）。请确认 lib/ 下的文件就位。</p>'
     window.__ink = { initError: 'Suminagashi not loaded' }
@@ -65,6 +101,7 @@
     aiSize: 1.0,             // AI 笔触大小（缩放落墨半径；用户可滑）
     mode: 'ink',             // 当前物态：'ink' 或 'sand'
     userEl: 'sand',          // 沙模式下用户当前材料
+    lang: 'zh',              // UI 语言：'zh' 或 'en'（不持久化）
     lastUserActivity: -1e9,  // 用户最近一次落笔的时间戳(ms)
     recentUser: [],          // 最近 ~3s 的用户落点，用于让 AI“绕开”
   }
@@ -341,14 +378,39 @@
       b.setAttribute('aria-selected', String(on2))
     })
     if (m === 'sand' && sand) sand.render(performance.now())  // 切回时立刻恢复沙画
-    setHint(m === 'sand'
-      ? '倒一把沙，或让 AI 慢慢堆一座小丘。你随时可以打断它。'
-      : '落笔，或让 AI 先画。你随时可以打断它。')
+    setHint(state.lang === 'zh'
+      ? (m === 'sand' ? '倒一把沙，或让 AI 慢慢堆一座小丘。你随时可以打断它。' : '落笔，或让 AI 先画。你随时可以打断它。')
+      : (m === 'sand' ? I18N.en.hintSand : I18N.en.hintInk))
     state.drawing = false
     state.lastUV = null
   }
   modeBtns.forEach((b) => on(b, 'click', () => setMode(b.dataset.mode)))
   setMode('ink')
+
+  // ── 中/EN 切换 ──
+  function applyLang() {
+    const dict = I18N[state.lang] || I18N.zh
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const k = el.getAttribute('data-i18n')
+      if (dict[k] != null) el.textContent = dict[k]
+    })
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+      const k = el.getAttribute('data-i18n-title')
+      if (dict[k] != null) { el.title = dict[k]; el.setAttribute('aria-label', dict[k]) }
+    })
+    document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+      const k = el.getAttribute('data-i18n-aria')
+      if (dict[k] != null) el.setAttribute('aria-label', dict[k])
+    })
+    if (aiToggle) aiToggle.textContent = state.aiOn ? dict.aiOn : dict.aiOff
+    const langBtn = $('lang')
+    if (langBtn) langBtn.textContent = state.lang === 'zh' ? 'EN' : '中文'
+    if (!hintGone) setHint(state.mode === 'sand' ? dict.hintSand : dict.hintInk)
+  }
+  on($('lang'), 'click', () => {
+    state.lang = state.lang === 'zh' ? 'en' : 'zh'
+    applyLang()
+  })
 
   on($('brush'), 'input', (e) => {
     state.strength = parseFloat(e.target.value)
@@ -366,7 +428,7 @@
     aiToggle.classList.toggle('on', state.aiOn)
     aiToggle.classList.toggle('off', !state.aiOn)
     aiToggle.setAttribute('aria-pressed', String(state.aiOn))
-    aiToggle.textContent = 'AI 同伴：' + (state.aiOn ? '开' : '关')
+    aiToggle.textContent = state.aiOn ? I18N[state.lang].aiOn : I18N[state.lang].aiOff
   })
 
   const patience = $('patience')
@@ -417,7 +479,7 @@
       }
       if (btn) {
         const t = btn.textContent
-        btn.textContent = '已保存 ✓'
+        btn.textContent = I18N[state.lang].saved
         setTimeout(() => { if (btn) btn.textContent = t }, 1500)
       }
     } catch (err) {
