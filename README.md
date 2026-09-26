@@ -50,7 +50,7 @@ Open `selftest.html`. It runs two groups of checks and shows PASS/FAIL:
   blank paper at start; the canvas actually darkens after a stroke; PNG export;
   **AI yields while the user is drawing (no new ink)**; **AI takes over after the user stops**;
   no ink after the AI toggle is off; clearing returns to blank paper.
-- **Sand group (19 checks)**: engine loads/instantiates; sand falls, water finds the floor;
+- **Sand group (20 checks)**: engine loads/instantiates; sand falls, water finds the floor;
   fire burns out (no fuel), water douses fire, cloud rains, bomb fuse detonates;
   **snow falls and piles; seeds germinate into plants near water (bounded growth);
   fire ignites plants and burns them down; fire turns water into steam and steam

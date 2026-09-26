@@ -155,7 +155,7 @@
   // ── 指针事件（鼠标 + 触摸统一）──
   // 同一套事件，按当前模式分发：墨模式走流体笔触，沙模式走倒沙放置。
   function pointerAct(uv, first) {
-    if (state.mode === 'ink') {
+    if (state.mode === 'ink' || state.mode === 'fine') {
       userStroke(uv)
     } else if (sand) {
       const ny = 1 - uv.y           // 沙用顶→底坐标（UV 的 y=1 在顶部，需翻转）
@@ -443,7 +443,8 @@
     if (aiToggle) aiToggle.textContent = state.aiOn ? dict.aiOn : dict.aiOff
     const langBtn = $('lang')
     if (langBtn) langBtn.textContent = state.lang === 'zh' ? 'EN' : '中文'
-    if (!hintGone) setHint(state.mode === 'sand' ? dict.hintSand : dict.hintInk)
+    const hintKey = state.mode === 'sand' ? 'hintSand' : (state.mode === 'fine' ? 'hintFine' : 'hintInk')
+    if (!hintGone) setHint(dict[hintKey])
   }
   on($('lang'), 'click', () => {
     state.lang = state.lang === 'zh' ? 'en' : 'zh'

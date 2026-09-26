@@ -342,6 +342,17 @@
         check('精细模式：笔触参数变细 + AI 让位，切回恢复', fineOk && backOk,
               'fine=' + fineOk + ' back=' + backOk)
 
+        // p) 精细模式下画笔必须走水墨引擎（回归测试：pointerAct 曾漏掉 fine）
+        hook.setMode('fine')
+        let fineStrokes = 0
+        const origStroke = hook.engine.strokeInk.bind(hook.engine)
+        hook.engine.strokeInk = function () { fineStrokes++; return origStroke.apply(null, arguments) }
+        document.getElementById('stage')
+          .dispatchEvent(new PointerEvent('pointerdown', { clientX: 300, clientY: 200, bubbles: true }))
+        hook.engine.strokeInk = origStroke
+        hook.setMode('ink')
+        check('精细模式下落笔走水墨引擎（真实笔触）', fineStrokes >= 1, 'strokes=' + fineStrokes)
+
         state.aiOn = false
         hook.setMode('ink')
       }
