@@ -1,142 +1,152 @@
-# Sand-and-Ink · 沙墨
+# Sand-and-Ink
 
-一个**离线、无账号、隐私优先**的沙盒心理疗愈工具。同一个场，两种物态：
+A **fully offline, account-free, privacy-first** sandbox for unwinding. One canvas, two materials — switch with the 墨/沙 (Ink/Sand) toggle at the bottom; switching changes the brush and the physics, not the program:
 
-- **水墨半（墨息 Ink Quiet，Mode B）**——已落地；
-- **颗粒半（Mode A）**——粒子沙盒，已落地。两半共用一块画布，用底部
-  「墨 / 沙」分段钮切换：切换 = 换笔 + 换物理模拟，不是换程序。
+- **Ink mode (Ink Quiet, Mode B)** — drop ink on rice paper and watch it bleed and flow.
+- **Sand mode (Mode A)** — a falling-sand particle sandbox with 9 materials.
 
-水墨半的玩法：你在宣纸上落墨，墨会自己洇开、流动；一个“哑 AI”同伴也会
-时不时落一笔，但你随时可以落笔打断它——它立刻让位，并把下一笔绕开你刚画的地方。
-沙半的玩法：选一种材料往画上倒（沙 / 火 / 水 / 云 / 炸弹 / 种子 / 植物 / 雪 / 蒸汽），看它按物理下落、上浮、流动、生长、互炸；
-同一个“哑 AI”会在角落慢慢替你堆一小座沙丘，你一动手它就停。
+Both halves are **sandbox games for decompressing** — no scores, no levels, no way to fail. Everything runs **100% offline** in your browser. This project was made in the hope that it might help someone who is feeling down: pour some sand, light a fire, grow a plant, watch the rain come back around.
 
-> 这是 IDEAS.md #001「离线沙盒疗愈工具」的第一版最小范围：
-> 水墨半 + 哑 AI + 打断/让位规则，**完全不碰机器学习**。
+There is no backend, no account, no tracking, and no network access at all.
 
-## 怎么跑（完全离线）
+## How it works
 
-直接双击 `index.html` 即可。所有资源（引擎、three.js、UI）都已本地化，
-没有任何网络请求、没有后端、没有账号。
+- **Ink mode**: you paint on the paper and the ink keeps bleeding on its own. A quiet "dumb AI" companion occasionally adds a stroke of its own — but the moment you touch the canvas it steps aside, and its next stroke avoids where you just painted. Your brush always wins.
+- **Sand mode**: pick a material and pour it onto the canvas — sand / fire / water / cloud / bomb / seed / plant / snow / steam — and watch them fall, rise, flow, grow, and react like in the classic Powder Game. The same AI companion quietly pours a little pile in a corner and stops as soon as you start drawing.
 
-如果浏览器对 `file://` 有限制，也可在目录里起一个本地静态服务（仍不联网）：
+> This is the first minimal slice of IDEAS.md #001 ("offline sandbox healing tool"):
+> ink fluid + dumb AI + interrupt/yield rules. **No machine learning involved.**
+
+## Run it (fully offline)
+
+Just double-click `index.html`. Every asset (engines, three.js, UI) is local — zero network requests, no backend, no account.
+
+If your browser restricts `file://`, serve the folder locally (still offline):
 
 ```bash
 cd ink-healing
 python3 -m http.server 8080
-# 打开 http://localhost:8080
+# open http://localhost:8080
 ```
 
-## 怎么验证
+## Verify it
 
-### 1. 一键自检（自动化，先看这个）
+### 1. One-click self test (automated — start here)
 
-双击 `selftest.html`。它会跑两组检查并显示 PASS/FAIL：
+Open `selftest.html`. It runs two groups of checks and shows PASS/FAIL:
 
-- **水墨组（8 项）**：three.js / 引擎已本地加载、WebGL 上下文可用；
-  初始是空白宣纸；落墨后画面确实变深；导出 PNG 可用；
-  **用户落笔时 AI 让位（不落新墨）**；**用户停笔后 AI 接手（落一笔）**；
-  关掉 AI 后不再落墨；归零后回到空白。
-- **沙盒组（17 项）**：沙盒引擎加载/实例化；沙会下落、水会落地；
-  火会烧尽（无燃料自灭）、水浇灭火、云会下雨凝水、炸弹引信到即爆；
-  **雪会下落堆积；种子遇水发芽成植物（生长有界）；火点燃植物蔓延烧尽；
-  水遇火变蒸汽、蒸汽凝回水（循环闭合）**；
-  归零清空（EMPTY 计数回到满格）；导出 PNG；
-  模式切换生效（沙模式只显示材料色、隐藏墨色板）；
-  **沙模式用户落笔 AI 让位 / 停笔后接手 / 盒子满了收手**；
-  同种子结果一致（确定性）。
+- **Ink group (8 checks)**: three.js / engine loaded locally, WebGL context works;
+  blank paper at start; the canvas actually darkens after a stroke; PNG export;
+  **AI yields while the user is drawing (no new ink)**; **AI takes over after the user stops**;
+  no ink after the AI toggle is off; clearing returns to blank paper.
+- **Sand group (17 checks)**: engine loads/instantiates; sand falls, water finds the floor;
+  fire burns out (no fuel), water douses fire, cloud rains, bomb fuse detonates;
+  **snow falls and piles; seeds germinate into plants near water (bounded growth);
+  fire ignites plants and burns them down; fire turns water into steam and steam
+  condenses back to water (closed loop)**;
+  clearing resets the grid (EMPTY count back to full); PNG export;
+  mode toggle works (sand mode hides the ink palette);
+  **user-active yield / idle takeover / full-box restraint in sand mode**;
+  same seed → same result (determinism).
 
-全绿 = 两套引擎与「打断 / 让位」规则都活着。
+All green = both engines and the interrupt/yield rules are alive.
 
-### 2. 离线是否成立（决定性测试）
+### 2. Prove it's offline (the decisive test)
 
-自检证明不了离线。真正的一票否决是这两招，任选：
+The self test can't prove offline-ness. Either of these is the real verdict:
 
-- **断网**：关掉 Wi‑Fi（或拔网线）→ 再打开 `index.html` 落笔。能洇墨、能存图 = 离线成立。
-- **DevTools**：F12 → Network → 勾上 **Offline** → 刷新。页面照常工作，且请求列表里
-  只应有本地文件（`index.html`、`styles.css`、`lib/*.js`、`src/app.js`），**零外部域名**。
+- **Disconnect**: turn off Wi-Fi → open `index.html` → paint. Ink still bleeds, export still works = offline confirmed.
+- **DevTools**: F12 → Network → check **Offline** → reload. The page keeps working and the request list
+  contains only local files (`index.html`, `styles.css`, `lib/*.js`, `src/app.js`) — **zero external domains**.
 
-想从代码层面确认，可以自己跑：
+To confirm at the source level:
 
 ```bash
 grep -rnE "fetch\(|XMLHttpRequest|PocketBase|https?://" src/ index.html lib/suminagashi.js
 ```
 
-预期只命中 `lib/suminagashi.js` 注释里的 GitHub 链接（署名，不是请求）。
-注：three.js 内部带有可用的加载器（loader）代码，但本项目从未调用任何加载器，
-不加载任何贴图/模型，那段能力不会被触发。
+Expected: only a GitHub link inside a comment in `lib/suminagashi.js` (attribution, not a request).
+Note: three.js ships loader code internally, but this project never calls any loader and loads no
+textures/models, so that code path is never triggered.
 
-### 3. 手感（只能你自己看）
+### 3. Feel (only you can judge this)
 
-- 拖一笔，松手后墨继续散开十几秒 —— 说明模拟一直在跑。
-- **让位 A/B 计数**：把「AI 耐心」拉到最小（2s）。
-  - 干坐 10 秒 → 应该出现约 5 笔蓝色（AI 的墨）。
-  - 再连续画 10 秒不停笔 → 应该出现 **0 笔**新蓝色（AI 全程让位）。
-- 停笔后 AI 恢复，且下一笔蓝色会**避开你刚画的位置**。
+- Drag a stroke, let go — the ink keeps spreading for a while, so the simulation is always running.
+- **Yield A/B test**: set "AI patience" to minimum (2s).
+  - Sit still for 10 seconds → about 5 blue strokes should appear (the AI's ink).
+  - Then draw continuously for 10 seconds → **0** new blue strokes (the AI yields the whole time).
+- After you stop, the AI resumes, and its next blue stroke **avoids where you just painted**.
 
-## 操作
+## Controls
 
-- **落笔**：在画上按住拖动。松手后墨会继续自己飘散。
-- **墨色**：底部五个色点切换你自己的墨（松烟 / 朱 / 松叶 / AI 的蓝 / **白**）。
-  **白是“减淡/留白”工具**：黑的太多时，用白笔刷一下能把墨擦淡、露出纸白（像橡皮），
-  适合随时调整画面；白色落墨本身不喷溅速度，安静地减淡。
-- **笔触**：调节墨量轻重（同时影响扩散/流动的力度）。
-- **浓度**：只调墨色深浅，不影响扩散。**对整张纸即时生效**——调滑块的瞬间，
-  你已画的墨、AI 已画的墨、之后新落的墨会一起变浓/变淡（引擎在渲染端统一加深墨层）。
-  颜料默认不再随时间褪淡（染料消散已调到极低：静置十分钟约淡 12%），但仍会自然洇开。
-- **AI 同伴**：开关。开着时，你安静几秒它就会落一笔；你一画它就退开。
-- **AI 耐心**：它两次落笔之间隔多久（越大越慢、越不抢戏）。
-- **归零**：清空画纸，墨从空白重新洇开。
-- **存图**：导出当前画面为 PNG（用 `toBlob`，对 `file://` 与 Safari 都稳）。
-  注意：**在 WorkBuddy 预览面板里 iframe 会拦截下载**，请用系统浏览器
-  直接打开 `index.html` 再点「存图」，文件会存到下载目录。按钮会变成
-  「已保存 ✓」作为反馈。
+- **Paint**: press and drag on the canvas. The ink keeps drifting after you release.
+- **Ink colors**: five dots at the bottom (pine soot / vermilion / pine needle / AI blue / **white**).
+  **White is the "lighten / leave-blank" tool**: when things get too dark, brush white over the ink
+  to fade it back to paper (like an eraser). White strokes don't splash velocity — they quietly lighten.
+- **Brush**: adjusts ink volume (also affects how much the stroke spreads/flows).
+- **Concentration**: only adjusts ink darkness, not spread. **Applies instantly to the whole sheet** —
+  moving the slider re-tints your strokes, the AI's strokes, and all future strokes together
+  (the engine deepens the ink layer at render time). Ink no longer fades over time by default
+  (dye dissipation is near zero: ~12% after ten minutes idle), but it still bleeds naturally.
+- **AI companion**: on/off. When on, it paints a stroke whenever you've been quiet for a bit; it steps away the moment you draw.
+- **AI patience**: how long it waits between strokes (higher = slower, less intrusive).
+- **Clear**: empties the paper; ink starts fresh from blank.
+- **Save**: exports the current frame as PNG (via `toBlob`, robust on `file://` and Safari).
+  Note: **the WorkBuddy preview iframe blocks downloads** — open `index.html` in a real browser
+  and click Save there; the file goes to your downloads folder. The button flashes
+  "已保存 ✓" (saved) as feedback.
 
-### 沙模式（切到「沙」后）
+### Sand mode (toggle to 「沙」)
 
-- **墨 / 沙**：底部左侧的分段钮。切到「沙」会换成九枚材料圆点（墨的五个色点同时隐藏），物理模拟从
-  流体切到元胞自动机，墨画布冻结保留（切回「墨」原样恢复）。
-- **材料**（沙半是个物性沙盒，按 Powder Game 式物理互作）：沙 / 火 / 水 / 云 / 炸弹颗粒 /
-  种子 / 植物 / 雪 / 蒸汽。
-  - **沙**：落下、堆成丘（休止角）、会沉入水。
-  - **火**：上浮（热气）、闪烁、无燃料会自己烧尽成烟（云）；碰到水被浇灭（水变蒸汽）、碰到炸弹会引爆它；
-    **点燃植物和种子**（火会沿着植物蔓延）。
-  - **水**：落下、向低处铺平、不蒸发；浇灭火（自己变蒸汽）。
-  - **云**：上浮、随风飘；会下雨变成水，贴着水/火会凝水（被火烤则下雨灭火）。
-  - **炸弹颗粒**：像粉末一样下落；引信倒计时（约 3 秒）或碰到火即爆——
-    爆心掏空、环带点燃，环内材料被气浪掀起 / 点燃。这是一种“爆炸”互动（沙半的物性之一）。
-  - **种子**：粉末状下落；落在水边会**发芽成植物**；碰火即燃。
-  - **植物**：画下去或由种子长出；按“生长预算”向上 / 侧上慢慢长出新枝
-    （长几层就停，**不会糊满屏**）；挨着水长得快；被火点燃后整片烧尽。
-  - **雪**：慢落、蓬松堆积（堆得比沙陡）；落在水面上会慢慢融化；遇火化成水。
-  - **蒸汽**：水被火烧出来的气体，上升、随风飘；寿命尽（约 2–4 秒）就地
-    **凝回一滴水**——水 → 蒸汽 → 雨 → 水，循环闭合。
-- **笔触**：同样调节倒料的粗细（复用墨模式的同一滑块）。
-- **AI 同伴 / 耐心**：与水墨半同一套让位规则。沙模式里 AI 会在角落慢慢替你
-  倒一小股材料、堆一座小丘；你一动手它就停，且**盒子太满（约 35%）它就主动收手**，
-  免得画面糊成一团。
-- 浓度滑块是墨模式专属，切到沙模式会自动隐藏。
+- **Ink / Sand**: the segmented button on the left. Switching to sand swaps the five ink dots for
+  **nine material dots**, and the physics switches from fluid to cellular automaton; the ink canvas
+  freezes and is restored intact when you switch back.
+- **Materials** (a physics sandbox with Powder Game–style reactions): sand / fire / water / cloud /
+  bomb / seed / plant / snow / steam.
+  - **Sand**: falls, piles into dunes (angle of repose), sinks in water.
+  - **Fire**: rises (hot gas), flickers, burns itself out into smoke (cloud) without fuel;
+    doused by water (the water becomes steam); detonates bombs;
+    **ignites plants and seeds** (fire spreads along vines).
+  - **Water**: falls, pools, never evaporates; douses fire (and becomes steam doing it).
+  - **Cloud**: rises, drifts with the wind; rains into water; condenses near water/fire
+    (being scorched by fire makes it rain and douse the fire).
+  - **Bomb grains**: fall like powder; explode on a ~3-second fuse or on fire contact —
+    a core void plus a burning ring; other bombs in the blast chain-detonate.
+    An "explosion" interaction (part of the sand half's physics).
+  - **Seed**: falls like powder; **germinates into a plant** near water; flammable.
+  - **Plant**: paint it directly or grow it from seeds; grows new shoots upward/sideways
+    under a per-cell growth budget (a few layers, then it stops — **it can't flood the grid**);
+    grows faster next to water; once ignited, the whole vine burns down.
+  - **Snow**: falls slowly, piles into fluffy steep drifts; slowly melts while floating on water;
+    melts instantly near fire.
+  - **Steam**: the gas that fire boils out of water; rises, drifts, and at end of life (~2–4s)
+    **condenses back into a droplet** — water → steam → rain → water, a closed loop.
+- **Brush**: same slider, now controlling the pour width.
+- **AI companion / patience**: same yield rules as ink mode. In sand mode the AI slowly pours a
+  little mound in a corner and stops the moment you draw; it also **holds back when the box is
+  more than ~35% full**, so the canvas never turns to mush.
+- The concentration slider is ink-mode only; it hides automatically in sand mode.
 
-## 设计纪律（来自 IDEAS.md v3）
+## Design discipline (from IDEAS.md v3)
 
-- 不评分、不过关、不失败。沙半含火 / 炸弹等物理互动，但从不判定“输赢 / 爆炸成败”；
-  疗愈与“不打断用户”的纪律落在水墨半与 AI 让位规则上。
-- AI 只出“意图”（落点、湿度），真正的笔触交给流体物理。
-- AI 的墨不表达情绪，只回应节奏；不打扰、不覆盖用户的笔。
-- 不做心理诊断，不对画面做任何“解读”。
+- No scores, no levels, no failure states. The sand half contains fire/bombs as *physics*,
+  but nothing is ever judged as "win/lose".
+- The AI only produces *intent* (where to drop, how wet); the actual stroke belongs to the physics.
+- The AI's ink expresses no emotion; it only responds to rhythm, never interrupting or overpainting yours.
+- No psychological assessment, no "your drawing means X" interpretation. This is a toy, not therapy.
 
-## 复用的代码与许可
+## Credits & license
 
-- 水墨引擎 `lib/suminagashi.js`：改编自 **fisheryv/healing**（MIT，© 2026 Fisher）。
-  原项目是“手机朝下、音乐驱动的专注 App”，本工具取其渲染底座，改成
-  “主动 + 可打断 + 离线”的交互。详见 `NOTICE.md`。
-- `lib/three.min.js`：three.js r137（MIT）。
-- 沙盒引擎 `lib/sandsim.js`：**本仓库原创实现**（© 2026 Franky100-pig，MIT）。
-  仅参考 MIT 项目的“思路”（neon-sand、SandGears），未复制任何代码；
-  **严禁**参考/复制 Sandboxels（R74n Content License，All Rights Reserved，作者可随时要求撤下）。
+- Ink engine `lib/suminagashi.js`: adapted from **fisheryv/healing** (MIT, © 2026 Fisher).
+  The original is a "phone face-down, music-driven focus app"; this tool reuses its rendering
+  core behind an "active + interruptible + offline" interaction. See `NOTICE.md`.
+- `lib/three.min.js`: three.js r137 (MIT).
+- Sand engine `lib/sandsim.js`: **original implementation in this repo** (© 2026 Franky100-pig, MIT).
+  Only the *ideas* of MIT-licensed projects (neon-sand, SandGears) were referenced; no code was copied.
+  Sandboxels (R74n Content License, All Rights Reserved) was **not** referenced or copied.
 
-## 下一步可能
+## Ideas for later
 
-- AI 的墨在用户落笔时**真的退开留白**（注入反向速度，而非仅仅“不落新笔”）。
-- 服务工作者（service worker）→ 真正可安装的 PWA，离线更彻底。
-- 把“哑 AI”升级为 Magenta sketch-rnn 式的笔画序列模型（仍可选、仍离线）。
+- The AI's ink **physically retreats** when the user paints (inject reverse velocity, not just "no new strokes").
+- Service worker → a truly installable PWA.
+- Upgrade the dumb AI to a sketch-RNN-style stroke-sequence model (still optional, still offline).
