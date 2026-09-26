@@ -2,6 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'" />
   <title>墨息 · 自检 (selftest)</title>
   <style>
     body { margin: 0; background: #efeae0; font: 14px/1.6 -apple-system, "PingFang SC", system-ui, sans-serif; color: #2a241e; }
@@ -303,12 +304,14 @@
         ? '全部通过 ' + passed + '/' + total
         : '通过 ' + passed + '/' + total + ' —— 有失败项，截图发我'
       summary.style.color = allOk ? '#2e6e52' : '#c8372d'
-      list.innerHTML = results.map((r) =>
-        '<li class="' + (r.ok ? 'pass' : 'fail') + '">' +
+      list.innerHTML = results.map((r) => {
+        // detail 可能来自异常消息，统一转义防注入
+        const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]))
+        return '<li class="' + (r.ok ? 'pass' : 'fail') + '">' +
         '<span class="mark">' + (r.ok ? 'PASS' : 'FAIL') + '</span>' +
-        '<span>' + r.name + '</span>' +
-        '<span class="detail">' + r.detail + '</span></li>'
-      ).join('')
+        '<span>' + esc(r.name) + '</span>' +
+        '<span class="detail">' + esc(r.detail) + '</span></li>'
+      }).join('')
     }
 
     main().catch((e) => {
