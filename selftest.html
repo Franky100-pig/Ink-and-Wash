@@ -28,6 +28,7 @@
 </head>
 <body>
   <canvas id="stage"></canvas>
+  <canvas id="sand-stage" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px" aria-hidden="true"></canvas>
   <div id="panel">
     <h1>墨息 · 自检</h1>
     <p class="sub">自动化检查渲染管线与「打断 / 让位」规则。全绿即说明引擎与交互都活着。</p>
@@ -43,6 +44,7 @@
 
   <script src="lib/three.min.js"></script>
   <script src="lib/suminagashi.js"></script>
+  <script src="lib/sandsim.js"></script>
   <script src="src/app.js"></script>
   <script>
   (function () {
@@ -152,6 +154,118 @@
       engine.clear(); pump(2)
       const cleared = inkFraction()
       check('归零后回到空白宣纸', cleared < 0.02, cleared.toFixed(4))
+
+      // ── 沙盒断言（Mode A）──
+      const SAND = window.SAND
+      check('沙盒引擎已本地加载', !!window.SandSim)
+      const sand = hook.sand
+      check('沙盒实例化成功', !!sand)
+      if (sand) {
+        const S = SAND
+        state.aiOn = false
+        hook.setMode('sand')
+
+        // a) 沙会下落
+        sand.clear(); sand.place(0.5, 0.1, 'sand', 1, 1)
+        const sTop0 = sand.cellAt(0.5, 0.1)
+        for (let i = 0; i < 160; i++) sand.step(0.02)
+        let sBot = false
+        for (const yy of [0.9, 0.93, 0.96, 0.99]) if (sand.cellAt(0.5, yy) === S.SAND) sBot = true
+        check('沙会往下落（顶空、底有沙）', sTop0 === S.SAND && sand.cellAt(0.5, 0.1) === S.EMPTY && sBot)
+
+        // b) 水会找到地面
+        sand.clear(); sand.place(0.5, 0.1, 'water', 1, 1)
+        for (let i = 0; i < 220; i++) sand.step(0.02)
+        let wBot = false
+        for (let x = 0; x < 1; x += 0.02) if (sand.cellAt(x, 0.99) === S.WATER) wBot = true
+        check('水会找到地面', wBot)
+
+        // c) 石保持静止
+        sand.clear(); sand.place(0.5, 0.3, 'stone', 1, 1)
+        for (let i = 0; i < 120; i++) sand.step(0.02)
+        check('石保持静止（空中不落）', sand.cellAt(0.5, 0.3) === S.STONE)
+
+        // d) 墨在水中晕开（水被染深）
+        sand.clear(); sand.place(0.5, 0.5, 'water', 3, 1)
+        for (let i = 0; i < 30; i++) sand.step(0.02)
+        sand.place(0.5, 0.45, 'ink', 2, 1)
+        for (let i = 0; i < 260; i++) sand.step(0.02)
+        let tinted = 0
+        const NN = sand.gridW * sand.gridH
+        for (let i = 0; i < NN; i++) if (sand.type[i] === S.WATER && sand.meta[i] > 0) tinted++
+        check('墨在水中晕开（水被染深）', tinted > 0, 'tinted=' + tinted)
+
+        // e) 雾会消散
+        sand.clear(); sand.place(0.5, 0.3, 'fog', 1, 1)
+        for (let i = 0; i < 3300; i++) sand.step(0.02)
+        check('雾会消散（短暂是本性的例外）', sand.countOf(S.FOG) === 0, 'left=' + sand.countOf(S.FOG))
+
+        // f) 归零
+        sand.clear()
+        check('沙盒归零清空', sand.fullness() === 0)
+
+        // g) 导出
+        let surl = ''
+        try { surl = sand.captureDataURL() } catch (e) {}
+        check('沙盒导出 PNG 可用', typeof surl === 'string' && surl.indexOf('data:image/png') === 0)
+
+        // h) 模式切换
+        hook.setMode('sand')
+        const sandOn = document.body.classList.contains('mode-sand') && state.mode === 'sand'
+        hook.setMode('ink')
+        const inkOn = !document.body.classList.contains('mode-sand') && state.mode === 'ink'
+        check('模式切换生效（墨 ↔ 沙）', sandOn && inkOn)
+
+        // i) 沙模式让位：用户刚动 → 不落沙
+        let splace = 0
+        const os = sand.place.bind(sand)
+        sand.place = function () { splace++; return os.apply(null, arguments) }
+        state.aiOn = true
+        const t1 = 2e12
+        state.lastUserActivity = t1
+        hook.aiTick(t1)
+        hook.advanceAiPour(t1)
+        const wActive = splace
+        sand.place = os
+        check('沙模式下用户落笔 AI 让位（不落沙）', wActive === 0, 'places=' + wActive)
+
+        // j) 沙模式接手：用户停笔 → 落沙
+        let splace2 = 0
+        const os2 = sand.place.bind(sand)
+        sand.place = function () { splace2++; return os2.apply(null, arguments) }
+        const t2 = 2e12 + 1e6
+        state.lastUserActivity = t2 - 10000
+        hook.aiTick(t2)
+        for (let i = 0; i < 5; i++) hook.advanceAiPour(t2)
+        sand.place = os2
+        check('沙模式下用户停笔后 AI 接手（落沙）', splace2 >= 1, 'places=' + splace2)
+
+        // k) 沙盒满了 AI 收手
+        let splace3 = 0
+        const os3 = sand.place.bind(sand)
+        sand.place = function () { splace3++; return os3.apply(null, arguments) }
+        let guard = 0
+        while (sand.fullness() < 0.4 && guard < 3000) { sand.place(Math.random(), Math.random(), 'sand', 3, 1); guard++ }
+        const t3 = 2e12 + 2e6
+        state.lastUserActivity = t3 - 60000
+        hook.aiTick(t3)
+        hook.advanceAiPour(t3)
+        sand.place = os3
+        check('沙盒满了 AI 收手', splace3 === 0, 'places=' + splace3 + ' fullness=' + sand.fullness().toFixed(2))
+
+        // l) 种子一致（确定性）
+        const sa = new window.SandSim(document.createElement('canvas'), { seed: 999 })
+        const sb = new window.SandSim(document.createElement('canvas'), { seed: 999 })
+        sa.place(0.4, 0.3, 'sand', 2, 1); sb.place(0.4, 0.3, 'sand', 2, 1)
+        sa.place(0.6, 0.4, 'water', 2, 1); sb.place(0.6, 0.4, 'water', 2, 1)
+        for (let i = 0; i < 200; i++) { sa.step(0.02); sb.step(0.02) }
+        let same = true
+        for (let i = 0; i < sa.gridW * sa.gridH; i++) if (sa.type[i] !== sb.type[i]) { same = false; break }
+        check('同种子结果一致', same)
+
+        state.aiOn = false
+        hook.setMode('ink')
+      }
 
       render()
     }
