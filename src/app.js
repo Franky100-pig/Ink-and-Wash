@@ -375,7 +375,7 @@
   // 墨 / 沙 模式切换（“同一个场，两种物态”：换笔 + 换物理，不是换程序）
   const modeBtns = Array.from(document.querySelectorAll('.mode-btn'))
   // 精细创作（fine art）：笔触更细、扩散更少、AI 完全让位；退出后恢复墨模式原参数。
-  const FINE_PARAMS = { SPLAT_RADIUS: 0.0011, SPLAT_VELOCITY: 0.1, CURL: 2 }
+  const FINE_PARAMS = { SPLAT_RADIUS: 0.00035, SPLAT_VELOCITY: 0.1, CURL: 2 }
   let savedEngineParams = null
   let savedAiOn = true
   function setMode(m) {
