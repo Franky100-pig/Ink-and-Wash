@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <meta name="theme-color" content="#efeae0" />
   <!-- 离线隐私由浏览器强制执行：禁止一切网络连接、外部脚本、嵌入与表单提交 -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'" />
   <title>墨息 · Ink Quiet — 离线沙盒疗愈</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -69,6 +69,8 @@
   </div>
 
   <p id="hint" data-i18n="hintInk">落笔，或让 AI 先画。你随时可以打断它。</p>
+
+  <p id="immersive-note" data-i18n="immersive">按 C 呼出工具栏</p>
 
   <script src="lib/three.min.js"></script>
   <script src="lib/suminagashi.js"></script>

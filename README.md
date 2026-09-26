@@ -46,7 +46,7 @@ Open `selftest.html`. It runs two groups of checks and shows PASS/FAIL:
   blank paper at start; the canvas actually darkens after a stroke; PNG export;
   **AI yields while the user is drawing (no new ink)**; **AI takes over after the user stops**;
   no ink after the AI toggle is off; clearing returns to blank paper.
-- **Sand group (17 checks)**: engine loads/instantiates; sand falls, water finds the floor;
+- **Sand group (18 checks)**: engine loads/instantiates; sand falls, water finds the floor;
   fire burns out (no fuel), water douses fire, cloud rains, bomb fuse detonates;
   **snow falls and piles; seeds germinate into plants near water (bounded growth);
   fire ignites plants and burns them down; fire turns water into steam and steam
@@ -133,6 +133,7 @@ textures/models, so that code path is never triggered.
   little mound in a corner and stops the moment you draw; it also **holds back when the box is
   more than ~35% full**, so the canvas never turns to mush.
 - The concentration slider is ink-mode only; it hides automatically in sand mode.
+- **Press C**: hides the toolbar for an immersive view of the AI painting; press again to bring it back. While the canvas is still empty, a faint "press C" hint stays on screen.
 
 ## Design discipline (from IDEAS.md v3)
 
