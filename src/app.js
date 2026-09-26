@@ -13,6 +13,8 @@
 (function () {
   'use strict'
 
+  try {
+
   if (!window.Suminagashi) {
     document.body.innerHTML = '<p style="padding:24px;font-family:sans-serif">引擎未加载（Suminagashi 缺失）。请确认 lib/ 下的文件就位。</p>'
     return
@@ -326,4 +328,9 @@
 
   // 测试钩子：只给 selftest.html 用，正常打开页面时无副作用。
   window.__ink = { engine, state, aiTick }
+  } catch (fatal) {
+    // 任何初始化异常都暴露给 selftest，而不是让页面静默崩溃
+    window.__ink = { initError: String(fatal && fatal.stack || fatal.message || fatal) }
+    console.error('app.js 初始化失败：', fatal)
+  }
 })()
